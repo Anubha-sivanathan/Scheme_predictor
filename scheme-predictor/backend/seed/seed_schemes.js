@@ -1,0 +1,211 @@
+// Seed data for the "schemes" collection.
+//
+// Run with:  mongosh scheme_predictor seed_schemes.js
+// (or point mongosh at your MONGODB_URI if not running locally)
+//
+// This gives the app realistic, demoable data across every category named
+// in the spec, each with real, working eligibilityCriteria so the rule
+// engine has something meaningful to evaluate. Application links point to
+// genuine, real government portals — never invented URLs.
+
+db = db.getSiblingDB("scheme_predictor");
+
+db.schemes.deleteMany({});
+
+const now = new Date();
+
+db.schemes.insertMany([
+  {
+    name: "National Scholarship Portal - Post Matric Scholarship",
+    department: "Ministry of Social Justice and Empowerment",
+    category: "Education",
+    description: "Financial assistance for SC/ST/OBC/EWS students pursuing post-matriculation or post-secondary education to reduce dropout rates.",
+    benefits: [
+      "Full tuition fee reimbursement",
+      "Maintenance allowance for hostellers and day scholars",
+      "Additional allowance for students with disabilities",
+    ],
+    eligibilityCriteria: {
+      minAge: 15,
+      maxAge: 30,
+      maxIncome: 250000,
+      allowedCategories: ["SC", "ST", "OBC", "EWS"],
+      requiresStudent: true,
+    },
+    requiredDocuments: ["Aadhaar", "Caste Certificate", "Income Certificate", "Previous Marksheet", "Bank Passbook"],
+    applicationProcess: "Register on the National Scholarship Portal, fill the application form, upload documents, and submit before the deadline. Applications are verified by your institution.",
+    applicationLink: "https://scholarships.gov.in",
+    deadline: "2026-11-30",
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    name: "PM Kisan Samman Nidhi",
+    department: "Ministry of Agriculture and Farmers Welfare",
+    category: "Agriculture",
+    description: "Income support of ₹6,000 per year to small and marginal farmer families, paid in three equal installments.",
+    benefits: ["₹2,000 every 4 months directly to bank account", "No repayment required"],
+    eligibilityCriteria: {
+      minAge: 18,
+      allowedOccupations: ["Farmer"],
+      requiresFarmer: true,
+      maxLandHoldingAcres: 5,
+    },
+    requiredDocuments: ["Aadhaar", "Land Ownership Document", "Bank Passbook"],
+    applicationProcess: "Register on the PM-KISAN portal or through your local Common Service Centre with land records and Aadhaar.",
+    applicationLink: "https://pmkisan.gov.in",
+    deadline: "2026-12-31",
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    name: "Ayushman Bharat - PMJAY",
+    department: "Ministry of Health and Family Welfare",
+    category: "Healthcare",
+    description: "Health insurance cover of ₹5 lakh per family per year for secondary and tertiary hospitalization to economically vulnerable families.",
+    benefits: ["Cashless treatment at empanelled hospitals", "Covers pre-existing conditions", "No cap on family size or age"],
+    eligibilityCriteria: {
+      maxIncome: 250000,
+    },
+    requiredDocuments: ["Aadhaar", "Ration Card", "Income Certificate"],
+    applicationProcess: "Check eligibility on the PMJAY portal using your ration card or Aadhaar number, then visit the nearest empanelled hospital's Ayushman Mitra desk.",
+    applicationLink: "https://pmjay.gov.in",
+    deadline: null,
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    name: "Pradhan Mantri Awas Yojana (Urban)",
+    department: "Ministry of Housing and Urban Affairs",
+    category: "Housing",
+    description: "Interest subsidy on home loans for economically weaker sections and low/middle income groups to support 'Housing for All'.",
+    benefits: ["Interest subsidy up to 6.5% on home loans", "Assistance for construction or purchase of a house"],
+    eligibilityCriteria: {
+      maxIncome: 1800000,
+      requiresDisability: false,
+    },
+    requiredDocuments: ["Aadhaar", "Income Certificate", "Property Documents"],
+    applicationProcess: "Apply through the PMAY-Urban portal or your city's municipal corporation with income and property documents.",
+    applicationLink: "https://pmaymis.gov.in",
+    deadline: "2026-10-15",
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    name: "Pradhan Mantri Mudra Yojana",
+    department: "Ministry of Finance",
+    category: "Employment",
+    description: "Collateral-free loans up to ₹10 lakh for non-corporate, non-farm small and micro enterprises to encourage self-employment.",
+    benefits: ["Loans without collateral", "Low interest rates", "Three loan categories: Shishu, Kishor, Tarun"],
+    eligibilityCriteria: {
+      minAge: 18,
+      maxIncome: 1000000,
+    },
+    requiredDocuments: ["Aadhaar", "Business Plan", "Bank Statements"],
+    applicationProcess: "Apply through any participating bank, NBFC, or MFI with your business plan and identity documents.",
+    applicationLink: "https://www.mudra.org.in",
+    deadline: null,
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    name: "Beti Bachao Beti Padhao",
+    department: "Ministry of Women and Child Development",
+    category: "Women & Child Welfare",
+    description: "Initiative to improve the child sex ratio and promote education and welfare of girl children through awareness and incentives.",
+    benefits: ["Educational incentives for girl children", "Community awareness programs", "Support for institutional strengthening"],
+    eligibilityCriteria: {
+      allowedCategories: ["General", "OBC", "SC", "ST", "EWS"],
+    },
+    requiredDocuments: ["Aadhaar", "Birth Certificate of the girl child"],
+    applicationProcess: "Contact your local Anganwadi centre or district administration office for enrollment.",
+    applicationLink: "https://wcd.nic.in/bbbp-schemes",
+    deadline: null,
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    name: "National Social Assistance Programme",
+    department: "Ministry of Rural Development",
+    category: "Financial Assistance",
+    description: "Monthly pension and financial assistance to elderly, widows, and persons with disabilities living below the poverty line.",
+    benefits: ["Monthly pension of ₹200-500 depending on age and state top-up", "Direct bank transfer"],
+    eligibilityCriteria: {
+      minAge: 60,
+      maxIncome: 150000,
+    },
+    requiredDocuments: ["Aadhaar", "Age Proof", "Income Certificate", "BPL Card"],
+    applicationProcess: "Apply through your Gram Panchayat or Municipal office with age and income proof.",
+    applicationLink: "https://nsap.nic.in",
+    deadline: null,
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    name: "Assistance to Disabled Persons for Purchase/Fitting of Aids and Appliances (ADIP)",
+    department: "Ministry of Social Justice and Empowerment",
+    category: "Disability Support",
+    description: "Financial assistance to persons with disabilities for procuring durable, sophisticated, and modern aids and appliances.",
+    benefits: ["Free or subsidized assistive devices", "Covers mobility aids, hearing aids, and more"],
+    eligibilityCriteria: {
+      maxIncome: 300000,
+      requiresDisability: true,
+    },
+    requiredDocuments: ["Aadhaar", "Disability Certificate", "Income Certificate"],
+    applicationProcess: "Apply through an ADIP-empanelled implementing agency in your district with a valid disability certificate.",
+    applicationLink: "https://disabilityaffairs.gov.in",
+    deadline: "2026-09-30",
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    name: "Indira Gandhi National Old Age Pension Scheme",
+    department: "Ministry of Rural Development",
+    category: "Senior Citizens",
+    description: "Monthly pension for senior citizens belonging to below-poverty-line households to provide basic financial security.",
+    benefits: ["Monthly pension directly credited to bank account", "State governments often add a top-up amount"],
+    eligibilityCriteria: {
+      minAge: 60,
+      maxIncome: 150000,
+      requiresSeniorCitizen: true,
+    },
+    requiredDocuments: ["Aadhaar", "Age Proof", "BPL Certificate"],
+    applicationProcess: "Apply at your Gram Panchayat, Block office, or Municipal office with age and BPL proof.",
+    applicationLink: "https://nsap.nic.in/circular.do?method=schemeClick",
+    deadline: null,
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    name: "National Means-cum-Merit Scholarship Scheme",
+    department: "Ministry of Education",
+    category: "Education",
+    description: "Scholarships to meritorious students from economically weaker sections to prevent dropout after Class 8 and support them till Class 12.",
+    benefits: ["₹12,000 per year", "Direct bank transfer"],
+    eligibilityCriteria: {
+      minAge: 12,
+      maxAge: 18,
+      maxIncome: 150000,
+      requiresStudent: true,
+      allowedEducationLevels: ["Secondary"],
+    },
+    requiredDocuments: ["Aadhaar", "Income Certificate", "Class 7 Marksheet"],
+    applicationProcess: "Students who pass the state-level NMMS selection test can apply through their school.",
+    applicationLink: "https://scholarships.gov.in",
+    deadline: "2026-11-15",
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  },
+]);
+
+print("Seeded " + db.schemes.countDocuments({}) + " schemes.");

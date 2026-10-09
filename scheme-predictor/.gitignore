@@ -1,0 +1,19 @@
+# Backend
+backend/target/
+backend/uploads/
+*.class
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Python
+ai-services/**/venv/
+ai-services/**/__pycache__/
+ai-services/**/*.pyc
+ai-services/**/model.joblib
+
+# Env / secrets
+.env
+*.log
+.DS_Store
