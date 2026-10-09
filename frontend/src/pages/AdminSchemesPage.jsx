@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import NavBar from '../components/NavBar'
 import { LoadingState, ErrorState, EmptyState } from '../components/StateViews'
-import BulkImportModal from '../components/BulkImportModal'
-import StagingReviewModal from '../components/StagingReviewModal'
 import {
   getAdminSchemes,
   createAdminScheme,
   updateAdminScheme,
   toggleAdminSchemeStatus,
   deleteAdminScheme,
-  getPendingStagingSchemes,
 } from '../api/admin'
 
 const ALL_CATEGORIES = [
@@ -71,17 +68,6 @@ export default function AdminSchemesPage() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState('schemes') // 'schemes' | 'staging'
-
-  // Staging State
-  const [stagingSchemes, setStagingSchemes] = useState([])
-  const [stagingLoading, setStagingLoading] = useState(false)
-  const [stagingError, setStagingError] = useState(false)
-  const [showImportModal, setShowImportModal] = useState(false)
-  const [selectedStagingId, setSelectedStagingId] = useState(null)
-  const [stagingActionFeedback, setStagingActionFeedback] = useState(null) // {type, message}
-
   const loadSchemes = () => {
     setLoading(true)
     setError(false)
@@ -94,21 +80,8 @@ export default function AdminSchemesPage() {
       .finally(() => setLoading(false))
   }
 
-  const loadStagingSchemes = () => {
-    setStagingLoading(true)
-    setStagingError(false)
-    getPendingStagingSchemes('PENDING')
-      .then(setStagingSchemes)
-      .catch((err) => {
-        console.error('Failed to load staging schemes:', err)
-        setStagingError(true)
-      })
-      .finally(() => setStagingLoading(false))
-  }
-
   useEffect(() => {
     loadSchemes()
-    loadStagingSchemes()
   }, [])
 
   // Open modal for Create
@@ -267,25 +240,6 @@ export default function AdminSchemesPage() {
   // Summary Metrics
   const activeCount = schemes.filter((s) => s.status === 'ACTIVE').length
   const inactiveCount = schemes.filter((s) => s.status !== 'ACTIVE').length
-  const pendingCount = stagingSchemes.length
-
-  // Staging action complete handler
-  const handleStagingAction = (result) => {
-    let message = ''
-    if (result.type === 'APPROVED') {
-      message = `✓ "${result.schemeName}" approved and ${result.changeType === 'UPDATE' ? 'updated in live schemes' : 'published as new live scheme'}.`
-      // Reload live schemes too since approval may have changed them
-      loadSchemes()
-    } else if (result.type === 'REJECTED') {
-      message = `✗ "${result.schemeName}" staging record rejected.`
-    } else if (result.type === 'EDITED') {
-      message = `Staging record edited successfully.`
-    }
-    setStagingActionFeedback({ type: result.type, message })
-    loadStagingSchemes()
-    // Auto-clear feedback after 5 seconds
-    setTimeout(() => setStagingActionFeedback(null), 5000)
-  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -306,20 +260,9 @@ export default function AdminSchemesPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            {activeTab === 'staging' ? (
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="btn-primary flex items-center gap-1.5 text-sm"
-              >
-                <span>↑</span> Bulk Import
-              </button>
-            ) : (
-              <button onClick={handleOpenCreate} className="btn-primary flex items-center gap-1.5 text-sm">
-                <span>+</span> Create New Scheme
-              </button>
-            )}
-          </div>
+          <button onClick={handleOpenCreate} className="btn-primary flex items-center gap-1.5 self-start sm:self-auto text-sm">
+            <span>+</span> Create New Scheme
+          </button>
         </div>
 
         {/* Metric Cards */}
@@ -336,49 +279,12 @@ export default function AdminSchemesPage() {
             <p className="text-xs text-amber-600 font-medium">Inactive Schemes</p>
             <p className="text-2xl font-bold text-amber-600 mt-1">{inactiveCount}</p>
           </div>
-          <div
-            className={`card !p-4 cursor-pointer transition-colors ${activeTab === 'staging' ? 'ring-2 ring-violet-400 bg-violet-50' : 'hover:bg-violet-50/50'}`}
-            onClick={() => setActiveTab(activeTab === 'staging' ? 'schemes' : 'staging')}
-          >
-            <p className="text-xs text-violet-600 font-medium flex items-center gap-1">
-              Pending Review
-              {pendingCount > 0 && (
-                <span className="bg-violet-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1">
-                  {pendingCount}
-                </span>
-              )}
+          <div className="card !p-4">
+            <p className="text-xs text-primary-600 font-medium">Categories</p>
+            <p className="text-2xl font-bold text-primary-600 mt-1">
+              {new Set(schemes.map((s) => s.category)).size}
             </p>
-            <p className="text-2xl font-bold text-violet-700 mt-1">{pendingCount}</p>
           </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-1 border-b border-slate-200">
-          <button
-            onClick={() => setActiveTab('schemes')}
-            className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${
-              activeTab === 'schemes'
-                ? 'border-primary-600 text-primary-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Live Scheme Management
-          </button>
-          <button
-            onClick={() => setActiveTab('staging')}
-            className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1.5 ${
-              activeTab === 'staging'
-                ? 'border-violet-600 text-violet-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Pending Review
-            {pendingCount > 0 && (
-              <span className="bg-violet-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                {pendingCount}
-              </span>
-            )}
-          </button>
         </div>
 
         {/* Filter & Search Bar */}

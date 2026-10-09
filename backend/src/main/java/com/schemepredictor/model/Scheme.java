@@ -49,14 +49,6 @@ public class Scheme {
     @Builder.Default
     private String status = "ACTIVE"; // ACTIVE / INACTIVE / EXPIRED
 
-    /** Provenance fields for approval-controlled data ingestion */
-    private String sourceSystem;
-    private String sourceUrl;
-    private String externalId;
-    private String dataOrigin;
-    private String reviewStatus;
-    private String contentHash;
-
     private Instant createdAt;
     private Instant updatedAt;
 
