@@ -60,11 +60,3 @@ databases:
   - name: scheme-predictor-mongo
     databaseName: scheme_predictor
     plan: free
-
-# ─────────────────────────────────────────────
-# MongoDB (managed database)
-# ─────────────────────────────────────────────
-databases:
-  - name: scheme-predictor-mongo
-    databaseName: scheme_predictor
-    plan: free
