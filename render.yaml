@@ -5,11 +5,9 @@ services:
   - type: web
     name: scheme-predictor-frontend
     runtime: docker
-    dockerfilePath: ./frontend/Dockerfile
-    dockerContext: ./frontend
+    rootDir: frontend
     envVars:
       - key: VITE_API_URL
-        # Replace with your actual backend Render URL after deploying the backend
         value: https://scheme-predictor-backend.onrender.com/api
 
   # ─────────────────────────────────────────────
@@ -18,8 +16,7 @@ services:
   - type: web
     name: scheme-predictor-backend
     runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    rootDir: backend
     disk:
       name: uploads
       mountPath: /app/uploads
@@ -46,8 +43,7 @@ services:
   - type: web
     name: scheme-predictor-recommendation
     runtime: docker
-    dockerfilePath: ./ai-services/recommendation-service/Dockerfile
-    dockerContext: ./ai-services/recommendation-service
+    rootDir: ai-services/recommendation-service
 
   # ─────────────────────────────────────────────
   # 4. OCR AI Service (EasyOCR)
@@ -55,8 +51,15 @@ services:
   - type: web
     name: scheme-predictor-ocr
     runtime: docker
-    dockerfilePath: ./ai-services/ocr-service/Dockerfile
-    dockerContext: ./ai-services/ocr-service
+    rootDir: ai-services/ocr-service
+
+# ─────────────────────────────────────────────
+# MongoDB (managed database)
+# ─────────────────────────────────────────────
+databases:
+  - name: scheme-predictor-mongo
+    databaseName: scheme_predictor
+    plan: free
 
 # ─────────────────────────────────────────────
 # MongoDB (managed database)
