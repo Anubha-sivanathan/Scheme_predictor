@@ -1,0 +1,67 @@
+services:
+  # ─────────────────────────────────────────────
+  # 1. Frontend (React + Vite → nginx)
+  # ─────────────────────────────────────────────
+  - type: web
+    name: scheme-predictor-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      - key: VITE_API_URL
+        # Replace with your actual backend Render URL after deploying the backend
+        value: https://scheme-predictor-backend.onrender.com/api
+
+  # ─────────────────────────────────────────────
+  # 2. Backend (Spring Boot)
+  # ─────────────────────────────────────────────
+  - type: web
+    name: scheme-predictor-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    disk:
+      name: uploads
+      mountPath: /app/uploads
+      sizeGB: 1
+    envVars:
+      - key: MONGODB_URI
+        fromDatabase:
+          name: scheme-predictor-mongo
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RECOMMENDATION_SERVICE_URL
+        value: https://scheme-predictor-recommendation.onrender.com
+      - key: OCR_SERVICE_URL
+        value: https://scheme-predictor-ocr.onrender.com
+      - key: CORS_ORIGINS
+        value: https://scheme-predictor-frontend.onrender.com
+      - key: UPLOAD_DIR
+        value: /app/uploads
+
+  # ─────────────────────────────────────────────
+  # 3. Recommendation AI Service (XGBoost)
+  # ─────────────────────────────────────────────
+  - type: web
+    name: scheme-predictor-recommendation
+    runtime: docker
+    dockerfilePath: ./ai-services/recommendation-service/Dockerfile
+    dockerContext: ./ai-services/recommendation-service
+
+  # ─────────────────────────────────────────────
+  # 4. OCR AI Service (EasyOCR)
+  # ─────────────────────────────────────────────
+  - type: web
+    name: scheme-predictor-ocr
+    runtime: docker
+    dockerfilePath: ./ai-services/ocr-service/Dockerfile
+    dockerContext: ./ai-services/ocr-service
+
+# ─────────────────────────────────────────────
+# MongoDB (managed database)
+# ─────────────────────────────────────────────
+databases:
+  - name: scheme-predictor-mongo
+    databaseName: scheme_predictor
+    plan: free
