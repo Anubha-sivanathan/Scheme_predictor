@@ -8,6 +8,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,6 +32,13 @@ public class DocumentRecord {
 
     private String fileName;
     private String storagePath;
+    private String contentType;
+
+    /** Highest version number so far; 0/absent on documents created before versioning (treated as v1). */
+    private int currentVersion;
+
+    /** Oldest first. Absent on legacy documents. */
+    private List<DocumentVersion> versions;
 
     @Builder.Default
     private String verificationStatus = "PENDING"; // PENDING / OCR_EXTRACTED / VERIFIED / REJECTED

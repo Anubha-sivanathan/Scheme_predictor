@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -43,11 +44,17 @@ public class NotificationService {
     }
 
     public Notification create(String userId, String type, String message, String relatedSchemeId) {
+        return create(userId, type, message, relatedSchemeId, null);
+    }
+
+    public Notification create(String userId, String type, String message, String relatedSchemeId,
+                               Map<String, String> params) {
         Notification n = Notification.builder()
                 .userId(userId)
                 .type(type)
                 .message(message)
                 .relatedSchemeId(relatedSchemeId)
+                .params(params)
                 .read(false)
                 .createdAt(Instant.now())
                 .build();
@@ -58,6 +65,7 @@ public class NotificationService {
     public void notifyDeadlineApproaching(String userId, String schemeName, String schemeId, long daysRemaining) {
         create(userId, "DEADLINE_APPROACHING",
                 "The application deadline for " + schemeName + " is approaching (" + daysRemaining + " days remaining).",
-                schemeId);
+                schemeId,
+                Map.of("scheme", schemeName, "days", String.valueOf(daysRemaining)));
     }
 }

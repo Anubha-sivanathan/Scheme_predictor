@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import * as authApi from '../api/auth'
+import { updateLanguage } from '../api/user'
+import i18n, { isSupported, setLanguage } from '../i18n'
 
 const AuthContext = createContext(null)
 
@@ -28,6 +30,15 @@ export function AuthProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // The account's saved language wins on sign-in; if it has none yet, the device choice is saved to it.
+  const syncLanguage = (serverLanguage) => {
+    if (isSupported(serverLanguage)) {
+      if (serverLanguage !== i18n.language) setLanguage(serverLanguage)
+    } else if (isSupported(i18n.language)) {
+      updateLanguage(i18n.language).catch(() => {})
+    }
+  }
+
   const login = async (email, password) => {
     setLoading(true)
     try {
@@ -36,6 +47,7 @@ export function AuthProvider({ children }) {
       const userData = { id: data.userId, name: data.name, email: data.email, role: data.role }
       localStorage.setItem('user', JSON.stringify(userData))
       setUser(userData)
+      syncLanguage(data.language)
       return userData
     } finally {
       setLoading(false)
@@ -50,6 +62,7 @@ export function AuthProvider({ children }) {
       const userData = { id: data.userId, name: data.name, email: data.email, role: data.role }
       localStorage.setItem('user', JSON.stringify(userData))
       setUser(userData)
+      syncLanguage(data.language)
       return userData
     } finally {
       setLoading(false)

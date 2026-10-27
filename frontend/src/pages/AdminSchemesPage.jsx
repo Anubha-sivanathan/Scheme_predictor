@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import NavBar from '../components/NavBar'
 import { LoadingState, ErrorState, EmptyState } from '../components/StateViews'
 import {
@@ -54,6 +55,8 @@ const INITIAL_SCHEME_STATE = {
 }
 
 export default function AdminSchemesPage() {
+  const { t } = useTranslation()
+  const cat = (value) => t(`categories.${value}`, { defaultValue: value })
   const [schemes, setSchemes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -132,11 +135,11 @@ export default function AdminSchemesPage() {
   const handleSave = async (e) => {
     e.preventDefault()
     if (!formData.name.trim()) {
-      setFormError('Scheme name is required.')
+      setFormError(t('admin.errors.nameRequired'))
       return
     }
     if (!formData.department.trim()) {
-      setFormError('Department is required.')
+      setFormError(t('admin.errors.departmentRequired'))
       return
     }
 
@@ -194,7 +197,7 @@ export default function AdminSchemesPage() {
       setIsModalOpen(false)
     } catch (err) {
       console.error('Error saving scheme:', err)
-      setFormError(err.response?.data?.message || 'Failed to save scheme. Please verify inputs.')
+      setFormError(err.response?.data?.message || t('admin.errors.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -212,7 +215,7 @@ export default function AdminSchemesPage() {
 
   // Delete Scheme
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to permanently delete the scheme "${name}"?`)) {
+    if (!window.confirm(t('admin.confirmDelete', { name }))) {
       return
     }
     try {
@@ -220,7 +223,7 @@ export default function AdminSchemesPage() {
       setSchemes((prev) => prev.filter((s) => s.id !== id))
     } catch (err) {
       console.error('Failed to delete scheme:', err)
-      alert('Could not delete scheme.')
+      alert(t('admin.errors.deleteFailed'))
     }
   }
 
@@ -251,36 +254,36 @@ export default function AdminSchemesPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider bg-primary-100 text-primary-700 px-2.5 py-0.5 rounded-md">
-                Admin Control
+                {t('admin.control')}
               </span>
-              <h1 className="text-xl font-bold text-slate-800">Government Schemes Portal</h1>
+              <h1 className="text-xl font-bold text-slate-800">{t('admin.title')}</h1>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Configure deterministic eligibility rules, application links, and manage scheme availability.
+              {t('admin.subtitle')}
             </p>
           </div>
 
           <button onClick={handleOpenCreate} className="btn-primary flex items-center gap-1.5 self-start sm:self-auto text-sm">
-            <span>+</span> Create New Scheme
+            <span>+</span> {t('admin.create')}
           </button>
         </div>
 
         {/* Metric Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="card !p-4">
-            <p className="text-xs text-slate-400 font-medium">Total Schemes</p>
+            <p className="text-xs text-slate-400 font-medium">{t('admin.totalSchemes')}</p>
             <p className="text-2xl font-bold text-slate-800 mt-1">{schemes.length}</p>
           </div>
           <div className="card !p-4">
-            <p className="text-xs text-emerald-600 font-medium">Active Schemes</p>
+            <p className="text-xs text-emerald-600 font-medium">{t('admin.activeSchemes')}</p>
             <p className="text-2xl font-bold text-emerald-600 mt-1">{activeCount}</p>
           </div>
           <div className="card !p-4">
-            <p className="text-xs text-amber-600 font-medium">Inactive Schemes</p>
+            <p className="text-xs text-amber-600 font-medium">{t('admin.inactiveSchemes')}</p>
             <p className="text-2xl font-bold text-amber-600 mt-1">{inactiveCount}</p>
           </div>
           <div className="card !p-4">
-            <p className="text-xs text-primary-600 font-medium">Categories</p>
+            <p className="text-xs text-primary-600 font-medium">{t('admin.categories')}</p>
             <p className="text-2xl font-bold text-primary-600 mt-1">
               {new Set(schemes.map((s) => s.category)).size}
             </p>
@@ -291,7 +294,8 @@ export default function AdminSchemesPage() {
         <div className="card !p-4 flex flex-col sm:flex-row gap-3">
           <input
             type="text"
-            placeholder="Search by scheme name or department..."
+            placeholder={t('admin.searchPlaceholder')}
+            aria-label={t('admin.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="input-field text-xs sm:flex-1"
@@ -302,10 +306,10 @@ export default function AdminSchemesPage() {
             onChange={(e) => setFilterCategory(e.target.value)}
             className="input-field text-xs sm:w-48"
           >
-            <option value="ALL">All Categories</option>
-            {ALL_CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
+            <option value="ALL">{t('admin.allCategories')}</option>
+            {ALL_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {cat(c)}
               </option>
             ))}
           </select>
@@ -315,31 +319,31 @@ export default function AdminSchemesPage() {
             onChange={(e) => setFilterStatus(e.target.value)}
             className="input-field text-xs sm:w-36"
           >
-            <option value="ALL">All Statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
+            <option value="ALL">{t('admin.allStatuses')}</option>
+            <option value="ACTIVE">{t('admin.active')}</option>
+            <option value="INACTIVE">{t('admin.inactive')}</option>
           </select>
         </div>
 
         {/* Scheme List Table */}
         {loading ? (
-          <LoadingState message="Loading scheme management records..." />
+          <LoadingState message={t('admin.loading')} />
         ) : error ? (
-          <ErrorState message="Could not load schemes for administration." onRetry={loadSchemes} />
+          <ErrorState message={t('admin.loadFailed')} onRetry={loadSchemes} />
         ) : filteredSchemes.length === 0 ? (
-          <EmptyState message="No schemes match the specified filters." icon="📂" />
+          <EmptyState message={t('admin.noMatch')} icon="📂" />
         ) : (
           <div className="card !p-0 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase tracking-wider font-semibold">
                   <tr>
-                    <th className="py-3 px-4">Scheme Details</th>
-                    <th className="py-3 px-3">Category</th>
-                    <th className="py-3 px-3">Eligibility Highlights</th>
-                    <th className="py-3 px-3">Deadline</th>
-                    <th className="py-3 px-3">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3 px-4">{t('admin.col.details')}</th>
+                    <th className="py-3 px-3">{t('admin.col.category')}</th>
+                    <th className="py-3 px-3">{t('admin.col.eligibility')}</th>
+                    <th className="py-3 px-3">{t('admin.col.deadline')}</th>
+                    <th className="py-3 px-3">{t('admin.col.status')}</th>
+                    <th className="py-3 px-4 text-right">{t('admin.col.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -366,27 +370,27 @@ export default function AdminSchemesPage() {
                         </td>
 
                         <td className="py-3.5 px-3 whitespace-nowrap">
-                          <span className="badge-primary">{s.category}</span>
+                          <span className="badge-primary">{cat(s.category)}</span>
                         </td>
 
                         <td className="py-3.5 px-3 max-w-xs">
                           {isCritDefined ? (
                             <div className="text-[11px] text-slate-600 space-y-0.5">
                               {(c.minAge != null || c.maxAge != null) && (
-                                <p>Age: {c.minAge ?? '0'}–{c.maxAge ?? '∞'}</p>
+                                <p>{t('admin.age')}: {c.minAge ?? '0'}–{c.maxAge ?? '∞'}</p>
                               )}
                               {c.maxIncome != null && (
-                                <p>Max Income: ₹{(c.maxIncome / 100000).toFixed(1)}L</p>
+                                <p>{t('admin.maxIncome')}: ₹{(c.maxIncome / 100000).toFixed(1)}L</p>
                               )}
                               {c.allowedGenders?.length > 0 && (
-                                <p className="text-primary-700">Gender: {c.allowedGenders.join(', ')}</p>
+                                <p className="text-primary-700">{t('admin.gender')}: {c.allowedGenders.map((g) => t(`profile.genders.${g}`, { defaultValue: g })).join(', ')}</p>
                               )}
-                              {c.requiresStudent && <span className="mr-1 text-emerald-600 font-semibold">[Student]</span>}
-                              {c.requiresFarmer && <span className="mr-1 text-emerald-600 font-semibold">[Farmer]</span>}
-                              {c.requiresDisability && <span className="mr-1 text-amber-600 font-semibold">[Disability]</span>}
+                              {c.requiresStudent && <span className="mr-1 text-emerald-600 font-semibold">[{t('admin.flag.student')}]</span>}
+                              {c.requiresFarmer && <span className="mr-1 text-emerald-600 font-semibold">[{t('admin.flag.farmer')}]</span>}
+                              {c.requiresDisability && <span className="mr-1 text-amber-600 font-semibold">[{t('admin.flag.disability')}]</span>}
                             </div>
                           ) : (
-                            <span className="text-[11px] text-slate-400 italic">No strict rules</span>
+                            <span className="text-[11px] text-slate-400 italic">{t('admin.noRules')}</span>
                           )}
                         </td>
 
@@ -402,9 +406,9 @@ export default function AdminSchemesPage() {
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                 : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
                             }`}
-                            title="Click to toggle status"
+                            title={t('admin.toggleStatus')}
                           >
-                            <span>{s.status === 'ACTIVE' ? '● Active' : '○ Inactive'}</span>
+                            <span>{s.status === 'ACTIVE' ? `● ${t('admin.active')}` : `○ ${t('admin.inactive')}`}</span>
                           </button>
                         </td>
 
@@ -414,13 +418,13 @@ export default function AdminSchemesPage() {
                               onClick={() => handleOpenEdit(s)}
                               className="text-primary-600 hover:text-primary-800 font-medium px-2 py-1 rounded hover:bg-primary-50"
                             >
-                              Edit
+                              {t('admin.edit')}
                             </button>
                             <button
                               onClick={() => handleDelete(s.id, s.name)}
                               className="text-rose-500 hover:text-rose-700 font-medium px-2 py-1 rounded hover:bg-rose-50"
                             >
-                              Delete
+                              {t('common.delete')}
                             </button>
                           </div>
                         </td>
@@ -440,10 +444,11 @@ export default function AdminSchemesPage() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col my-8">
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
               <h2 className="font-semibold text-slate-800 text-base">
-                {editingSchemeId ? 'Edit Government Scheme' : 'Create New Government Scheme'}
+                {editingSchemeId ? t('admin.editTitle') : t('admin.createTitle')}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
+                aria-label={t('common.close')}
                 className="text-slate-400 hover:text-slate-600 text-lg leading-none"
               >
                 ✕
@@ -460,13 +465,13 @@ export default function AdminSchemesPage() {
               {/* Section 1: Basic Scheme Information */}
               <div className="space-y-3">
                 <h3 className="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-                  1. Scheme Overview
+                  {t('admin.sec1')}
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-slate-700 font-medium mb-1">
-                      Scheme Name *
+                      {t('admin.f.name')} *
                     </label>
                     <input
                       type="text"
@@ -474,13 +479,13 @@ export default function AdminSchemesPage() {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="input-field text-xs"
-                      placeholder="e.g. Chief Minister Higher Education Scholarship"
+                      placeholder={t('admin.ph.name')}
                     />
                   </div>
 
                   <div>
                     <label className="block text-slate-700 font-medium mb-1">
-                      Department *
+                      {t('admin.f.department')} *
                     </label>
                     <input
                       type="text"
@@ -488,22 +493,22 @@ export default function AdminSchemesPage() {
                       value={formData.department}
                       onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                       className="input-field text-xs"
-                      placeholder="e.g. Higher Education Department"
+                      placeholder={t('admin.ph.department')}
                     />
                   </div>
 
                   <div>
                     <label className="block text-slate-700 font-medium mb-1">
-                      Scheme Category *
+                      {t('admin.f.category')} *
                     </label>
                     <select
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                       className="input-field text-xs"
                     >
-                      {ALL_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
+                      {ALL_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {cat(c)}
                         </option>
                       ))}
                     </select>
@@ -511,36 +516,36 @@ export default function AdminSchemesPage() {
 
                   <div>
                     <label className="block text-slate-700 font-medium mb-1">
-                      Status
+                      {t('admin.col.status')}
                     </label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                       className="input-field text-xs"
                     >
-                      <option value="ACTIVE">ACTIVE</option>
-                      <option value="INACTIVE">INACTIVE</option>
+                      <option value="ACTIVE">{t('admin.active')}</option>
+                      <option value="INACTIVE">{t('admin.inactive')}</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-slate-700 font-medium mb-1">
-                    Description
+                    {t('admin.f.description')}
                   </label>
                   <textarea
                     rows={2}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="input-field text-xs"
-                    placeholder="Brief description of the scheme and its objectives..."
+                    placeholder={t('admin.ph.description')}
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-slate-700 font-medium mb-1">
-                      Official Portal Link
+                      {t('admin.f.link')}
                     </label>
                     <input
                       type="url"
@@ -553,7 +558,7 @@ export default function AdminSchemesPage() {
 
                   <div>
                     <label className="block text-slate-700 font-medium mb-1">
-                      Application Deadline
+                      {t('admin.f.deadline')}
                     </label>
                     <input
                       type="date"
@@ -569,14 +574,14 @@ export default function AdminSchemesPage() {
               <div className="space-y-3 pt-3 border-t border-slate-100">
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-                    2. Eligibility Rule Criteria (Evaluated deterministically)
+                    {t('admin.sec2')}
                   </h3>
-                  <span className="text-[10px] text-primary-600 font-medium">Rule Engine Source of Truth</span>
+                  <span className="text-[10px] text-primary-600 font-medium">{t('admin.ruleEngine')}</span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-slate-700 font-medium mb-1">Min Age</label>
+                    <label className="block text-slate-700 font-medium mb-1">{t('admin.f.minAge')}</label>
                     <input
                       type="number"
                       value={formData.eligibilityCriteria.minAge}
@@ -595,7 +600,7 @@ export default function AdminSchemesPage() {
                   </div>
 
                   <div>
-                    <label className="block text-slate-700 font-medium mb-1">Max Age</label>
+                    <label className="block text-slate-700 font-medium mb-1">{t('admin.f.maxAge')}</label>
                     <input
                       type="number"
                       value={formData.eligibilityCriteria.maxAge}
@@ -614,7 +619,7 @@ export default function AdminSchemesPage() {
                   </div>
 
                   <div>
-                    <label className="block text-slate-700 font-medium mb-1">Min Income (₹)</label>
+                    <label className="block text-slate-700 font-medium mb-1">{t('admin.f.minIncome')}</label>
                     <input
                       type="number"
                       value={formData.eligibilityCriteria.minIncome}
@@ -628,12 +633,12 @@ export default function AdminSchemesPage() {
                         })
                       }
                       className="input-field text-xs"
-                      placeholder="Optional"
+                      placeholder={t('admin.ph.optional')}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-slate-700 font-medium mb-1">Max Income (₹)</label>
+                    <label className="block text-slate-700 font-medium mb-1">{t('admin.f.maxIncomeInput')}</label>
                     <input
                       type="number"
                       value={formData.eligibilityCriteria.maxIncome}
@@ -655,7 +660,7 @@ export default function AdminSchemesPage() {
                 {/* Social Categories Checkbox Group */}
                 <div>
                   <label className="block text-slate-700 font-medium mb-1.5">
-                    Target Social Categories (Leave unselected for all categories)
+                    {t('admin.f.socialCategories')}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {SOCIAL_CATEGORIES.map((cat) => {
@@ -683,7 +688,7 @@ export default function AdminSchemesPage() {
                               : 'bg-white text-slate-600 border-slate-200 hover:border-primary-300'
                           }`}
                         >
-                          {cat}
+                          {t(`admin.social.${cat}`, { defaultValue: cat })}
                         </button>
                       )
                     })}
@@ -693,7 +698,7 @@ export default function AdminSchemesPage() {
                 {/* Gender Targeting */}
                 <div>
                   <label className="block text-slate-700 font-medium mb-1.5">
-                    Gender Requirement (Leave unselected for all genders)
+                    {t('admin.f.genders')}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {GENDER_OPTIONS.map((g) => {
@@ -721,7 +726,7 @@ export default function AdminSchemesPage() {
                               : 'bg-white text-slate-600 border-slate-200 hover:border-primary-300'
                           }`}
                         >
-                          {g}
+                          {t(`profile.genders.${g}`, { defaultValue: g })}
                         </button>
                       )
                     })}
@@ -732,7 +737,7 @@ export default function AdminSchemesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-slate-700 font-medium mb-1">
-                      Min Disability Percentage (%)
+                      {t('admin.f.minDisability')}
                     </label>
                     <input
                       type="number"
@@ -753,7 +758,7 @@ export default function AdminSchemesPage() {
 
                   <div>
                     <label className="block text-slate-700 font-medium mb-1">
-                      Max Land Holding (Acres)
+                      {t('admin.f.maxLand')}
                     </label>
                     <input
                       type="number"
@@ -791,7 +796,7 @@ export default function AdminSchemesPage() {
                       }
                       className="rounded text-primary-600"
                     />
-                    <span className="text-slate-700 font-medium">Requires Student</span>
+                    <span className="text-slate-700 font-medium">{t('admin.f.requiresStudent')}</span>
                   </label>
 
                   <label className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100 cursor-pointer">
@@ -809,7 +814,7 @@ export default function AdminSchemesPage() {
                       }
                       className="rounded text-primary-600"
                     />
-                    <span className="text-slate-700 font-medium">Requires Farmer</span>
+                    <span className="text-slate-700 font-medium">{t('admin.f.requiresFarmer')}</span>
                   </label>
 
                   <label className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100 cursor-pointer">
@@ -827,7 +832,7 @@ export default function AdminSchemesPage() {
                       }
                       className="rounded text-primary-600"
                     />
-                    <span className="text-slate-700 font-medium">Requires Disability</span>
+                    <span className="text-slate-700 font-medium">{t('admin.f.requiresDisability')}</span>
                   </label>
 
                   <label className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100 cursor-pointer">
@@ -845,7 +850,7 @@ export default function AdminSchemesPage() {
                       }
                       className="rounded text-primary-600"
                     />
-                    <span className="text-slate-700 font-medium">Senior Citizen</span>
+                    <span className="text-slate-700 font-medium">{t('admin.f.seniorCitizen')}</span>
                   </label>
                 </div>
               </div>
@@ -854,27 +859,27 @@ export default function AdminSchemesPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100">
                 <div>
                   <label className="block text-slate-700 font-medium mb-1">
-                    Key Benefits (One per line)
+                    {t('admin.f.benefits')}
                   </label>
                   <textarea
                     rows={3}
                     value={formData.benefitsText}
                     onChange={(e) => setFormData({ ...formData, benefitsText: e.target.value })}
                     className="input-field text-xs"
-                    placeholder="Full tuition fee waiver&#10;Monthly maintenance allowance ₹1,000"
+                    placeholder={t('admin.ph.benefits')}
                   />
                 </div>
 
                 <div>
                   <label className="block text-slate-700 font-medium mb-1">
-                    Required Documents (One per line)
+                    {t('admin.f.documents')}
                   </label>
                   <textarea
                     rows={3}
                     value={formData.documentsText}
                     onChange={(e) => setFormData({ ...formData, documentsText: e.target.value })}
                     className="input-field text-xs"
-                    placeholder="Aadhaar Card&#10;Income Certificate&#10;Community Certificate"
+                    placeholder={t('admin.ph.documents')}
                   />
                 </div>
               </div>
@@ -885,10 +890,10 @@ export default function AdminSchemesPage() {
                   onClick={() => setIsModalOpen(false)}
                   className="btn-secondary text-xs"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" disabled={saving} className="btn-primary text-xs">
-                  {saving ? 'Saving...' : editingSchemeId ? 'Update Scheme' : 'Create Scheme'}
+                  {saving ? t('profile.saving') : editingSchemeId ? t('admin.update') : t('admin.createBtn')}
                 </button>
               </div>
             </form>

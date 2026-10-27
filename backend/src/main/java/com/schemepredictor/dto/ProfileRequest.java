@@ -4,10 +4,14 @@ import lombok.Data;
 
 @Data
 public class ProfileRequest {
+    private String fullName;
+    private String dateOfBirth;
     private Integer age;
     private String gender;
     private String state;
     private String district;
+    private String pinCode;
+    private String address;
     private Double income;
     private String occupation;
     private String education;

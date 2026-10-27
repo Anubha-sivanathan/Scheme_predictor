@@ -57,17 +57,43 @@ def get_reader():
     return _reader
 
 
-def extract_raw_text(image_path):
-    """Extract raw text from uploaded image/PDF using EasyOCR."""
-
+def _ocr_image(path):
     reader = get_reader()
+    return chr(10).join(reader.readtext(path, detail=0))
 
-    results = reader.readtext(
-        image_path,
-        detail=0
-    )
 
-    return "\n".join(results)
+def extract_raw_text(file_path):
+    """Extract raw text from an uploaded image or PDF.
+
+    PDFs: use the embedded text layer when there is one, otherwise render each
+    page to an image and OCR it (EasyOCR cannot read PDFs directly).
+    """
+
+    if not file_path.lower().endswith(".pdf"):
+        return _ocr_image(file_path)
+
+    try:
+        import pymupdf as fitz  # PyMuPDF >= 1.24.3
+    except ImportError:
+        import fitz
+
+    parts = []
+    with fitz.open(file_path) as pdf:
+        for index, page in enumerate(pdf):
+            if index >= 5:  # certificates are short; bound the work
+                break
+            text = page.get_text().strip()
+            if len(text) >= 40:
+                parts.append(text)
+                continue
+            png = f"{file_path}.page{index}.png"
+            try:
+                page.get_pixmap(dpi=200).save(png)
+                parts.append(_ocr_image(png))
+            finally:
+                if os.path.exists(png):
+                    os.remove(png)
+    return chr(10).join(parts)
 
 
 # =========================================================
@@ -2718,6 +2744,329 @@ def parse_generic(text):
 # DOCUMENT PARSER REGISTRY
 # =========================================================
 
+# =========================================================
+# EXTRA FIELDS (issuing authority, validity, roll number, ...)
+# Added on top of the base parsers; never overwrites a value
+# a parser already found.
+# =========================================================
+
+_AUTHORITY_WORDS = (
+    r"Tahsildar|Tehsildar|Thahsildar|Revenue\s+Divisional\s+Officer|RDO|"
+    r"District\s+Collector|Collector|Sub[\s-]?Collector|Village\s+Administrative\s+Officer|VAO|"
+    r"Civil\s+Surgeon|Medical\s+Board|Competent\s+Authority"
+)
+
+
+def _one_line(text):
+    return re.sub(r"\s+", " ", clean_ocr_text(text))
+
+
+def extract_issuing_authority(single_line):
+    labelled = re.search(
+        r"(?:Issuing\s+Authority|Issued\s+By|Issuing\s+Officer)"
+        r"\s*[:\-]?\s*([A-Za-z][A-Za-z .,()&-]{2,60}?)"
+        r"(?=\s+(?:Date|Valid|Validity|Certificate|Place|Seal|Signature)\b|$)",
+        single_line,
+        re.IGNORECASE,
+    )
+    if labelled:
+        return labelled.group(1).strip(" .,-")
+    named = re.search(rf"\b({_AUTHORITY_WORDS})\b", single_line, re.IGNORECASE)
+    return named.group(1).strip() if named else None
+
+
+def extract_validity(single_line):
+    valid_upto = re.search(
+        r"(?:Valid(?:ity)?(?:\s+(?:up\s*to|till|until|upto))?)\s*[:\-]?\s*"
+        r"([0-3]?\d[/-][0-1]?\d[/-](?:19|20)\d{2})",
+        single_line,
+        re.IGNORECASE,
+    )
+    if valid_upto:
+        return valid_upto.group(1)
+    period = re.search(
+        r"Valid(?:ity)?\s*(?:for|period)?\s*[:\-]?\s*(\d+\s*(?:year|month)s?)",
+        single_line,
+        re.IGNORECASE,
+    )
+    if period:
+        return period.group(1)
+    if re.search(r"\bPermanent\b", single_line, re.IGNORECASE):
+        return "Permanent"
+    return None
+
+
+def _add(fields, key, value):
+    if value and not fields.get(key):
+        fields[key] = value
+
+
+def _extras_income(single_line, fields):
+    _add(fields, "issuingAuthority", extract_issuing_authority(single_line))
+    _add(fields, "validity", extract_validity(single_line))
+
+
+def _extras_caste(single_line, fields):
+    _add(fields, "issuingAuthority", extract_issuing_authority(single_line))
+
+
+def _extras_disability(single_line, fields):
+    _add(fields, "issuingAuthority", extract_issuing_authority(single_line))
+    if not fields.get("certificateNumber"):
+        _add(fields, "certificateNumber", extract_certificate_number(single_line) or fields.get("udid"))
+
+
+def _extras_education(single_line, fields):
+    roll = re.search(
+        r"(?:Register(?:ed)?\s*(?:No|Number)|Registration\s*(?:No|Number)|"
+        r"Roll\s*(?:No|Number)|Reg\.?\s*No)\.?\s*[:\-]?\s*([A-Za-z0-9/\-]{4,25})",
+        single_line,
+        re.IGNORECASE,
+    )
+    if roll:
+        _add(fields, "registrationNumber", roll.group(1))
+    marks = re.search(
+        r"(?:Percentage|Marks\s+Percentage|Aggregate)\s*(?:of\s+Marks)?\s*[:\-]?\s*(\d{1,3}(?:\.\d+)?)\s*%?",
+        single_line,
+        re.IGNORECASE,
+    )
+    if marks and float(marks.group(1)) <= 100:
+        _add(fields, "percentage", marks.group(1))
+    total = re.search(
+        r"(?:Total\s+Marks|Marks\s+Obtained)\s*[:\-]?\s*(\d{2,5}(?:\s*/\s*\d{2,5})?)",
+        single_line,
+        re.IGNORECASE,
+    )
+    if total:
+        _add(fields, "marks", re.sub(r"\s+", "", total.group(1)))
+    qual = re.search(
+        r"\b(Ph\.?D|M\.?Tech|B\.?Tech|B\.?E|M\.?E|M\.?Sc|B\.?Sc|M\.?A|B\.?A|M\.?Com|B\.?Com|MBA|MCA|BCA|"
+        r"Diploma|HSC|SSLC|Higher\s+Secondary|Secondary\s+School)\b",
+        single_line,
+        re.IGNORECASE,
+    )
+    if qual:
+        _add(fields, "qualification", qual.group(1))
+
+
+def _extras_employment(single_line, fields):
+    kind = re.search(
+        r"(?:Employment\s+Type|Type\s+of\s+Employment|Nature\s+of\s+Employment)\s*[:\-]?\s*"
+        r"([A-Za-z /-]{3,30}?)(?=\s+(?:Employer|Occupation|Date|Registration|Labour)\b|$)",
+        single_line,
+        re.IGNORECASE,
+    )
+    if kind:
+        _add(fields, "employmentType", kind.group(1).strip())
+    else:
+        _add(fields, "employmentType", fields.get("employmentStatus"))
+
+
+def _with_extras(parser, extras):
+    def wrapped(text):
+        fields = parser(text)
+        try:
+            extras(_one_line(text), fields)
+        except Exception as error:  # extras must never break extraction
+            logger.warning("Extra field extraction failed: %s", error)
+        return fields
+
+    wrapped.__name__ = parser.__name__
+    return wrapped
+
+
+parse_income_certificate = _with_extras(parse_income_certificate, _extras_income)
+parse_caste_certificate = _with_extras(parse_caste_certificate, _extras_caste)
+parse_disability_certificate = _with_extras(parse_disability_certificate, _extras_disability)
+parse_education_certificate = _with_extras(parse_education_certificate, _extras_education)
+parse_employment_document = _with_extras(parse_employment_document, _extras_employment)
+
+
+# =========================================================
+# LINE-AWARE LABEL PASS
+# The base parsers flatten the text onto one line, so a value can run into
+# the next label ("Priya Murugan Community"). Certificates are laid out as
+# "Label: value" lines, so read those directly. A labelled line wins over the
+# flattened guess; when a line has no value after the label, the base result
+# is kept.
+# =========================================================
+
+_LABELS = {
+    "INCOME": {
+        "name": r"Name\s+of\s+the\s+Applicant|Applicant\s+Name|Name",
+        "taluk": r"Taluk|Taluka|Tehsil",
+        "district": r"District",
+    },
+    "CASTE": {
+        "name": r"Name\s+of\s+the\s+Applicant|Applicant\s+Name|Name",
+        "community": r"Community",
+        "caste": r"Caste|Sub[\s-]?Caste",
+        "taluk": r"Taluk|Taluka|Tehsil",
+        "district": r"District",
+    },
+    "RESIDENCE": {
+        "name": r"Name\s+of\s+the\s+Applicant|Applicant\s+Name|Name",
+        "village": r"Village",
+        "taluk": r"Taluk|Taluka|Tehsil",
+        "district": r"District",
+    },
+    "EDUCATION": {
+        "name": r"Name\s+of\s+the\s+Student|Student\s+Name|Name",
+        "institution": r"Name\s+of\s+the\s+(?:Institution|College|School)|Institution|College|School",
+        "course": r"Course|Programme|Degree",
+    },
+    "LAND": {
+        "ownerName": r"Name\s+of\s+(?:the\s+)?(?:Owner|Pattadar)|Owner(?:\s+Name)?|Pattadar(?:\s+Name)?",
+        "surveyNumber": r"Survey\s*(?:No|Number)\.?",
+        "village": r"Village",
+        "taluk": r"Taluk|Taluka|Tehsil",
+        "district": r"District",
+    },
+    "DISABILITY": {
+        "name": r"Name\s+of\s+(?:the\s+)?(?:Beneficiary|Applicant)|Applicant\s+Name|Name",
+    },
+    "EMPLOYMENT": {
+        "name": r"Name\s+of\s+(?:the\s+)?(?:Worker|Employee|Applicant)|Employee\s+Name|Name",
+        "occupation": r"Occupation|Designation|Trade",
+        "employer": r"Employer|Name\s+of\s+(?:the\s+)?(?:Employer|Establishment)|Establishment",
+        "labourRegistrationDetails": (
+            r"Labou?r\s+(?:Registration|Card|ID)(?:\s*(?:No|Number))?|"
+            r"Registration\s*(?:No|Number)|UAN|e-?Shram(?:\s*(?:No|Number))?"
+        ),
+    },
+    "BANK": {
+        "accountHolderName": r"Account\s+Holder(?:'s)?(?:\s+Name)?|Customer\s+Name|Name",
+        "branch": r"Branch(?:\s+Name)?",
+        "bankName": r"Bank\s+Name",
+    },
+    "RATION": {
+        "headOfFamily": r"Head\s+of\s+(?:the\s+)?Family|Card\s+Holder|Family\s+Head",
+    },
+}
+
+# Never accept these as a value: they are other labels or boilerplate.
+_NOT_A_VALUE = re.compile(
+    r"^(?:of|the|name|certificate|date|no|number|and|for)$", re.IGNORECASE
+)
+_NEXT_LABEL = re.compile(r"\s{2,}|\s+[A-Za-z][A-Za-z .]{1,24}\s*:\s")
+
+
+def _labelled_values(raw_text, patterns):
+    """{field: value} for every 'Label: value' (or 'Label - value') line."""
+    out = {}
+    for line in clean_ocr_text(raw_text).splitlines():
+        for field, label in patterns.items():
+            if field in out:
+                continue
+            match = re.match(rf"^\W*(?:{label})\s*[:\-–]\s*(.+)$", line, re.IGNORECASE)
+            if not match:
+                continue
+            value = _NEXT_LABEL.split(match.group(1).strip())[0].strip(" .,;:-")
+            if len(value) >= 2 and not _NOT_A_VALUE.match(value):
+                out[field] = value
+    return out
+
+
+def _fix_ifsc(value):
+    code = re.sub(r"[^A-Za-z0-9]", "", str(value)).upper()
+    if len(code) != 11:
+        return value
+    to_alpha = str.maketrans("0158", "OISB")
+    to_digit = str.maketrans("OISB", "0158")
+    return code[:4].translate(to_alpha) + "0" + code[5:].translate(to_digit) if code[4] in "0O" else value
+
+
+def _fix_aadhaar(raw_text, fields):
+    address = fields.get("address")
+    if address:
+        fields["address"] = re.sub(
+            r"[\s;,]*\b(?:Mera|Meri|Aadhaar|Aadhar|Pehchaan|VID|Download|Issue)\b.*$", "", address,
+            flags=re.IGNORECASE,
+        ).strip(" ;,")
+    if fields.get("name"):
+        return
+    # On an Aadhaar the holder's name is the plain text line just above the DOB / year-of-birth line.
+    lines = clean_ocr_text(raw_text).splitlines()
+    skip = re.compile(
+        r"government|india|aadhaar|aadhar|authority|unique|identification|dob|birth|male|female|"
+        r"address|mobile|vid|\d", re.IGNORECASE,
+    )
+    for i, line in enumerate(lines):
+        if re.search(r"\bDOB\b|Date\s+of\s+Birth|Year\s+of\s+Birth|\bYOB\b", line, re.IGNORECASE):
+            for back in range(i - 1, max(i - 3, -1), -1):
+                candidate = lines[back].strip()
+                if re.fullmatch(r"[A-Za-z][A-Za-z .]{2,40}", candidate) and not skip.search(candidate):
+                    fields["name"] = candidate
+                    return
+            return
+
+
+def _fix_education(raw_text, fields):
+    institution = fields.get("institution", "")
+    if not institution or re.search(r"name\s+of|student", institution, re.IGNORECASE):
+        fields.pop("institution", None)
+        for line in clean_ocr_text(raw_text).splitlines():
+            if re.search(r"\b(?:University|College|Institute|School|Polytechnic)\b", line, re.IGNORECASE) \
+                    and ":" not in line and len(line) <= 80:
+                fields["institution"] = line.strip()
+                break
+    if fields.get("name") and re.search(r"\b(?:of|the)\b", fields["name"], re.IGNORECASE) \
+            and len(fields["name"].split()) <= 2:
+        fields.pop("name")
+
+
+def _fix_ration(fields):
+    members = fields.get("familyMembers")
+    if not members:
+        return
+    members = re.sub(r"^(?:Family\s+)?Members?\s*[:\-]?\s*", "", members, flags=re.IGNORECASE).strip()
+    fields["familyMembers"] = members
+    count = len([m for m in re.split(r"\s*;\s*|\s*,\s*", members) if m.strip()])
+    try:
+        current = int(fields.get("familySize", 0))
+    except ValueError:
+        current = 0
+    if count > current:
+        fields["familySize"] = str(count)
+
+
+def _with_labels(parser, kind):
+    def wrapped(text):
+        fields = parser(text)
+        try:
+            for field, value in _labelled_values(text, _LABELS.get(kind, {})).items():
+                base = fields.get(field)
+                if base and re.sub(r"\W", "", str(base)).lower() == re.sub(r"\W", "", value).lower():
+                    continue  # same value, base parser already normalised it
+                fields[field] = value
+            if kind == "BANK" and fields.get("ifsc"):
+                fields["ifsc"] = _fix_ifsc(fields["ifsc"])
+            elif kind == "AADHAAR":
+                _fix_aadhaar(text, fields)
+            elif kind == "EDUCATION":
+                _fix_education(text, fields)
+            elif kind == "RATION":
+                _fix_ration(fields)
+        except Exception as error:  # the base result is still returned
+            logger.warning("Label pass failed for %s: %s", kind, error)
+        return fields
+
+    wrapped.__name__ = parser.__name__
+    return wrapped
+
+
+parse_aadhaar = _with_labels(parse_aadhaar, "AADHAAR")
+parse_income_certificate = _with_labels(parse_income_certificate, "INCOME")
+parse_caste_certificate = _with_labels(parse_caste_certificate, "CASTE")
+parse_residence_certificate = _with_labels(parse_residence_certificate, "RESIDENCE")
+parse_ration_card = _with_labels(parse_ration_card, "RATION")
+parse_education_certificate = _with_labels(parse_education_certificate, "EDUCATION")
+parse_disability_certificate = _with_labels(parse_disability_certificate, "DISABILITY")
+parse_land_document = _with_labels(parse_land_document, "LAND")
+parse_employment_document = _with_labels(parse_employment_document, "EMPLOYMENT")
+parse_bank_passbook = _with_labels(parse_bank_passbook, "BANK")
+
+
 PARSERS = {
 
     # Aadhaar
@@ -2850,6 +3199,9 @@ def extract():
         fields = parser(
             raw_text
         )
+        
+        # Never log raw text or field values: they contain Aadhaar numbers and other personal data.
+        logger.info("OCR extracted field names: %s", sorted(fields.keys()))
 
         logger.info(
             "Successfully processed %s OCR with %d fields extracted.",

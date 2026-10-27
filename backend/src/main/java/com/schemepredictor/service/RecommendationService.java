@@ -120,6 +120,7 @@ public class RecommendationService {
                 .passedChecks(passed)
                 .failedChecks(failed)
                 .missingInformation(eligibility.getMissingInformation())
+                .missingInformationCodes(eligibility.getMissingCodes())
                 .build();
     }
 

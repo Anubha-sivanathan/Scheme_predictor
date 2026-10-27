@@ -1,8 +1,11 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 
 export default function RegisterPage() {
+  const { t } = useTranslation()
   const { register } = useAuth()
   const navigate = useNavigate()
   const [name, setName] = useState('')
@@ -12,9 +15,9 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false)
 
   const validate = () => {
-    if (!name.trim()) return 'Name is required'
-    if (!email.trim()) return 'Email is required'
-    if (password.length < 8) return 'Password must be at least 8 characters'
+    if (!name.trim()) return t('auth.errors.nameRequired')
+    if (!email.trim()) return t('auth.errors.emailRequired')
+    if (password.length < 8) return t('auth.errors.passwordMin')
     return ''
   }
 
@@ -31,7 +34,7 @@ export default function RegisterPage() {
       await register(name.trim(), email.trim(), password)
       navigate('/')
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not create account')
+      setError(err.response?.data?.message || t('auth.errors.registerFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -40,27 +43,31 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
+        <div className="flex justify-end mb-2">
+          <LanguageSwitcher />
+        </div>
         <div className="text-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-primary-600 text-white flex items-center justify-center font-bold text-lg mx-auto mb-3">
             SP
           </div>
-          <h1 className="text-xl font-semibold text-slate-800">Create your account</h1>
-          <p className="text-sm text-slate-500 mt-1">Discover government schemes you may qualify for</p>
+          <h1 className="text-xl font-semibold text-slate-800">{t('auth.createTitle')}</h1>
+          <p className="text-sm text-slate-500 mt-1">{t('auth.createSubtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="card space-y-4">
           {error && (
-            <div className="bg-red-50 text-red-600 text-sm rounded-xl px-3 py-2">{error}</div>
+            <div role="alert" className="bg-red-50 text-red-600 text-sm rounded-xl px-3 py-2">{error}</div>
           )}
 
           <div>
-            <label className="text-sm font-medium text-slate-700 block mb-1.5">Full Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="input-field" placeholder="Your name" />
+            <label htmlFor="reg-name" className="text-sm font-medium text-slate-700 block mb-1.5">{t('auth.fullName')}</label>
+            <input id="reg-name" value={name} onChange={(e) => setName(e.target.value)} className="input-field" placeholder={t('auth.namePlaceholder')} />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-700 block mb-1.5">Email</label>
+            <label htmlFor="reg-email" className="text-sm font-medium text-slate-700 block mb-1.5">{t('auth.email')}</label>
             <input
+              id="reg-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -70,24 +77,25 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-700 block mb-1.5">Password</label>
+            <label htmlFor="reg-password" className="text-sm font-medium text-slate-700 block mb-1.5">{t('auth.password')}</label>
             <input
+              id="reg-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input-field"
-              placeholder="At least 8 characters"
+              placeholder={t('auth.passwordHint')}
             />
           </div>
 
           <button type="submit" disabled={submitting} className="btn-primary w-full">
-            {submitting ? 'Creating account...' : 'Create Account'}
+            {submitting ? t('auth.creatingAccount') : t('auth.createAccount')}
           </button>
 
           <p className="text-sm text-center text-slate-500">
-            Already have an account?{' '}
+            {t('auth.haveAccount')}{' '}
             <Link to="/login" className="text-primary-600 font-medium hover:text-primary-700">
-              Sign In
+              {t('auth.signIn')}
             </Link>
           </p>
         </form>

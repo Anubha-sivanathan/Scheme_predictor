@@ -44,6 +44,12 @@ public class Scheme {
     /** Real official URL only. Never fabricated. */
     private String applicationLink;
 
+    /** Where the entry comes from, e.g. "Official portal: pmfby.gov.in". Null for older entries. */
+    private String dataSource;
+
+    /** ISO date (yyyy-MM-dd) on which applicationLink was last confirmed reachable. Null if never checked. */
+    private String linkVerifiedOn;
+
     private LocalDate deadline;
 
     @Builder.Default

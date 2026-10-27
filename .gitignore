@@ -9,6 +9,7 @@ frontend/dist/
 
 # Python
 ai-services/**/venv/
+ai-services/**/.venv/
 ai-services/**/__pycache__/
 ai-services/**/*.pyc
 ai-services/**/model.joblib

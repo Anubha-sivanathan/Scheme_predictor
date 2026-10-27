@@ -6,7 +6,9 @@ import com.schemepredictor.model.Scheme;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 
 /**
@@ -25,6 +27,41 @@ import java.util.Locale;
 @Component
 public class EligibilityRuleEngine {
 
+    /** English label -> stable code. The label text itself is unchanged for existing clients. */
+    private static final Map<String, String> LABEL_CODES = Map.ofEntries(
+            Map.entry("Eligibility criteria", "UNCONFIGURED"),
+            Map.entry("Age requirement", "AGE"),
+            Map.entry("Income requirement", "INCOME"),
+            Map.entry("Gender requirement", "GENDER"),
+            Map.entry("Category requirement", "CATEGORY"),
+            Map.entry("Residence requirement", "RESIDENCE"),
+            Map.entry("District requirement", "DISTRICT"),
+            Map.entry("Occupation requirement", "OCCUPATION"),
+            Map.entry("Education requirement", "EDUCATION"),
+            Map.entry("Disability requirement", "DISABILITY"),
+            Map.entry("Disability percentage", "DISABILITY_PERCENT"),
+            Map.entry("Student status", "STUDENT"),
+            Map.entry("Farmer status", "FARMER"),
+            Map.entry("Landholding limit", "LAND"),
+            Map.entry("Senior citizen status", "SENIOR"));
+
+    /** English "missing information" text -> stable code. */
+    private static final Map<String, String> MISSING_CODES = Map.ofEntries(
+            Map.entry("Age / Date of Birth (Aadhaar)", "AGE"),
+            Map.entry("Annual Income (Income Certificate)", "INCOME"),
+            Map.entry("Gender (Aadhaar Card)", "GENDER"),
+            Map.entry("Community / Caste Certificate", "CATEGORY"),
+            Map.entry("State of residence (Residence / Nativity Certificate)", "RESIDENCE"),
+            Map.entry("District of residence", "DISTRICT"),
+            Map.entry("Occupation / Employment Document", "OCCUPATION"),
+            Map.entry("Education level (Student Certificate / Marksheet)", "EDUCATION"),
+            Map.entry("Disability Certificate / UDID", "DISABILITY"),
+            Map.entry("Disability percentage details", "DISABILITY_PERCENT"),
+            Map.entry("Student Bonafide / Enrollment Certificate", "STUDENT"),
+            Map.entry("Land records (Patta / Chitta / Adangal)", "FARMER"),
+            Map.entry("Landholding extent details", "LAND"),
+            Map.entry("Age proof (Aadhaar)", "SENIOR"));
+
     public EligibilityResult evaluate(Scheme scheme, Profile profile) {
         List<EligibilityResult.CriterionCheck> checks = new ArrayList<>();
         List<String> missing = new ArrayList<>();
@@ -38,6 +75,7 @@ public class EligibilityRuleEngine {
                     .label("Eligibility criteria")
                     .detail("Not yet configured for automatic checking")
                     .status("UNKNOWN")
+                    .code("UNCONFIGURED")
                     .build();
             return EligibilityResult.builder()
                     .schemeId(scheme.getId())
@@ -241,6 +279,10 @@ public class EligibilityRuleEngine {
             }
         }
 
+        checks.forEach(ch -> {
+            if (ch.getCode() != null) ch.setParams(paramsFor(ch.getCode(), profile, c));
+        });
+
         // --- Final Tri-State Decision ---
         String status;
         boolean eligible;
@@ -267,7 +309,38 @@ public class EligibilityRuleEngine {
                 .statusMessage(statusMessage)
                 .checks(checks)
                 .missingInformation(missing)
+                .missingCodes(missing.stream().map(MISSING_CODES::get).toList())
                 .build();
+    }
+
+    /** Raw values behind each check's detail text, for clients that render the detail in another language. */
+    private Map<String, String> paramsFor(String code, Profile p, Scheme.EligibilityCriteria c) {
+        Map<String, String> m = new LinkedHashMap<>();
+        switch (code) {
+            case "AGE" -> { put(m, "actual", p == null ? null : p.getAge()); put(m, "min", c.getMinAge()); put(m, "max", c.getMaxAge()); }
+            case "INCOME" -> { put(m, "actual", p == null ? null : p.getIncome()); put(m, "min", c.getMinIncome()); put(m, "max", c.getMaxIncome()); }
+            case "GENDER" -> { put(m, "actual", p == null ? null : p.getGender()); put(m, "allowed", join(c.getAllowedGenders())); }
+            case "CATEGORY" -> { put(m, "actual", p == null ? null : p.getCategory()); put(m, "allowed", join(c.getAllowedCategories())); }
+            case "RESIDENCE" -> { put(m, "actual", p == null ? null : p.getState()); put(m, "allowed", join(c.getAllowedStates())); }
+            case "DISTRICT" -> { put(m, "actual", p == null ? null : p.getDistrict()); put(m, "allowed", join(c.getAllowedDistricts())); }
+            case "OCCUPATION" -> { put(m, "actual", p == null ? null : p.getOccupation()); put(m, "allowed", join(c.getAllowedOccupations())); }
+            case "EDUCATION" -> { put(m, "actual", p == null ? null : p.getEducation()); put(m, "allowed", join(c.getAllowedEducationLevels())); }
+            case "DISABILITY_PERCENT" -> { put(m, "actual", p == null ? null : p.getDisabilityPercentage()); put(m, "min", c.getMinDisabilityPercentage()); }
+            case "STUDENT" -> put(m, "actual", p == null ? null : p.getIsStudent());
+            case "FARMER" -> put(m, "actual", p == null ? null : p.getIsFarmer());
+            case "LAND" -> { put(m, "actual", p == null ? null : p.getLandHoldingAcres()); put(m, "max", c.getMaxLandHoldingAcres()); }
+            case "SENIOR" -> { put(m, "age", p == null ? null : p.getAge()); put(m, "actual", p == null ? null : p.getIsSeniorCitizen()); }
+            default -> { }
+        }
+        return m;
+    }
+
+    private static void put(Map<String, String> m, String key, Object value) {
+        if (value != null) m.put(key, String.valueOf(value));
+    }
+
+    private static String join(List<String> values) {
+        return values == null ? null : String.join("/", values);
     }
 
     // ---------- Helper Methods ----------
@@ -277,6 +350,7 @@ public class EligibilityRuleEngine {
                 .label(label)
                 .detail(detail)
                 .status(ok ? "MET" : "NOT_MET")
+                .code(LABEL_CODES.get(label))
                 .build();
     }
 
@@ -285,6 +359,7 @@ public class EligibilityRuleEngine {
                 .label(label)
                 .detail("Required: " + requirement + " — not provided")
                 .status("UNKNOWN")
+                .code(LABEL_CODES.get(label))
                 .build();
     }
 

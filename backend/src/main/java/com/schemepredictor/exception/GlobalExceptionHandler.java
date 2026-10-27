@@ -24,6 +24,16 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiError> handleForbidden(ForbiddenException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(GoneException.class)
+    public ResponseEntity<ApiError> handleGone(GoneException ex, HttpServletRequest req) {
+        return build(HttpStatus.GONE, ex.getMessage(), req);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiError> handleBadCredentials(BadCredentialsException ex, HttpServletRequest req) {
         return build(HttpStatus.UNAUTHORIZED, "Invalid email or password", req);

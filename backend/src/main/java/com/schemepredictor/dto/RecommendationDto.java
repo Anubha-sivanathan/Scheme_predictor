@@ -36,4 +36,5 @@ public class RecommendationDto {
     private List<EligibilityResult.CriterionCheck> passedChecks;
     private List<EligibilityResult.CriterionCheck> failedChecks;
     private List<String> missingInformation;
+    private List<String> missingInformationCodes;
 }

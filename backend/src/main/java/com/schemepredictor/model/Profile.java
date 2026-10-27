@@ -28,10 +28,14 @@ public class Profile {
     @Indexed(unique = true)
     private String userId;
 
+    private String fullName;
+    private String dateOfBirth;         // DD/MM/YYYY as printed on the source document
     private Integer age;
     private String gender;              // Male / Female / Other
     private String state;
     private String district;
+    private String pinCode;
+    private String address;
     private Double income;              // Annual household income in INR
     private String occupation;
     private String education;

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import NavBar from '../components/NavBar'
 import Chatbot from '../components/Chatbot'
 import SchemeCard from '../components/SchemeCard'
@@ -20,6 +21,7 @@ const CATEGORIES = [
 ]
 
 export default function LandingPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [recommendations, setRecommendations] = useState([])
   const [loading, setLoading] = useState(true)
@@ -124,19 +126,20 @@ export default function LandingPage() {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-8">
         {/* A. Search Bar */}
         <section>
-          <h1 className="text-xl font-semibold text-slate-800 mb-1">Find schemes you may qualify for</h1>
+          <h1 className="text-xl font-semibold text-slate-800 mb-1">{t('landing.heading')}</h1>
           <p className="text-sm text-slate-500 mb-4">
-            Search by name, category, or describe your situation in your own words.
+            {t('landing.subheading')}
           </p>
           <form onSubmit={handleSearch} className="flex gap-2">
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder='Try "scholarship" or "schemes for farmers with low income"'
+              placeholder={t('landing.searchPlaceholder')}
+              aria-label={t('landing.searchPlaceholder')}
               className="input-field flex-1"
             />
             <button type="submit" className="btn-primary shrink-0">
-              Search
+              {t('common.search')}
             </button>
           </form>
         </section>
@@ -146,19 +149,19 @@ export default function LandingPage() {
           <section>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-slate-800">
-                Search Results {searching ? '' : `(${searchResults.length})`}
+                {t('landing.searchResults')} {searching ? '' : `(${searchResults.length})`}
               </h2>
               <button
                 onClick={() => { setSearchResults(null); setSearchQuery('') }}
                 className="text-sm text-primary-600 hover:text-primary-700"
               >
-                Clear
+                {t('common.clear')}
               </button>
             </div>
             {searching ? (
-              <LoadingState message="Searching schemes..." />
+              <LoadingState message={t('landing.searching')} />
             ) : searchResults.length === 0 ? (
-              <EmptyState message="No schemes matched your search. Try different words." icon="🔍" />
+              <EmptyState message={t('landing.noResults')} icon="🔍" />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {searchResults.map((s) => (
@@ -172,7 +175,7 @@ export default function LandingPage() {
         {/* B. Category Section */}
         {searchResults === null && (
           <section>
-            <h2 className="font-semibold text-slate-800 mb-3">Browse by Category</h2>
+            <h2 className="font-semibold text-slate-800 mb-3">{t('landing.browseCategory')}</h2>
             <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
               {CATEGORIES.map((cat) => (
                 <button
@@ -185,7 +188,7 @@ export default function LandingPage() {
                   }`}
                 >
                   <span className="text-xl">{cat.icon}</span>
-                  <span className="text-xs font-medium text-center leading-tight">{cat.name}</span>
+                  <span className="text-xs font-medium text-center leading-tight">{t(`categories.${cat.name}`)}</span>
                 </button>
               ))}
             </div>
@@ -193,9 +196,9 @@ export default function LandingPage() {
             {activeCategory && (
               <div className="mt-4">
                 {categoryLoading ? (
-                  <LoadingState message="Loading schemes..." />
+                  <LoadingState message={t('landing.loadingSchemes')} />
                 ) : categorySchemes.length === 0 ? (
-                  <EmptyState message={`No active schemes found in ${activeCategory} right now.`} />
+                  <EmptyState message={t('landing.noCategorySchemes', { category: t(`categories.${activeCategory}`) })} />
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {categorySchemes.map((s) => (
@@ -213,9 +216,9 @@ export default function LandingPage() {
           <section className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <h2 className="font-semibold text-slate-800 text-lg">Recommended for You</h2>
+                <h2 className="font-semibold text-slate-800 text-lg">{t('landing.recommended')}</h2>
                 <p className="text-xs text-slate-500">
-                  Evaluated with rule-based legal eligibility and ML predictive affinity.
+                  {t('landing.recommendedNote')}
                 </p>
               </div>
 
@@ -230,7 +233,7 @@ export default function LandingPage() {
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    All ({recommendations.length})
+                    {t('landing.tabAll', { count: recommendations.length })}
                   </button>
 
                   <button
@@ -241,7 +244,7 @@ export default function LandingPage() {
                         : 'text-emerald-700 hover:bg-emerald-50'
                     }`}
                   >
-                    <span>✓</span> Eligible ({eligibleSchemes.length})
+                    <span>✓</span> {t('landing.tabEligible', { count: eligibleSchemes.length })}
                   </button>
 
                   <button
@@ -252,7 +255,7 @@ export default function LandingPage() {
                         : 'text-amber-700 hover:bg-amber-50'
                     }`}
                   >
-                    <span>⚠</span> Needs Verification ({needsVerificationSchemes.length})
+                    <span>⚠</span> {t('landing.tabNeeds', { count: needsVerificationSchemes.length })}
                   </button>
 
                   <button
@@ -263,7 +266,7 @@ export default function LandingPage() {
                         : 'text-slate-500 hover:bg-slate-200/50'
                     }`}
                   >
-                    <span>✕</span> Not Eligible ({notEligibleSchemes.length})
+                    <span>✕</span> {t('landing.tabNot', { count: notEligibleSchemes.length })}
                   </button>
                 </div>
               )}
@@ -274,49 +277,49 @@ export default function LandingPage() {
               <div className="text-xs rounded-xl px-4 py-2.5 flex items-center justify-between border bg-white border-slate-100 shadow-xs">
                 {recFilterTab === 'ALL' && (
                   <p className="text-slate-600">
-                    <span className="font-semibold text-slate-800">Priority Ordering:</span> Showing schemes ranked by verified eligibility first, followed by schemes with high ML affinity requiring document verification.
+                    <span className="font-semibold text-slate-800">{t('landing.noteAllTitle')}</span> {t('landing.noteAll')}
                   </p>
                 )}
                 {recFilterTab === 'ELIGIBLE' && (
                   <p className="text-emerald-700">
-                    <span className="font-semibold">Ready to Apply:</span> You satisfy all verified mandatory criteria for these schemes.
+                    <span className="font-semibold">{t('landing.noteEligibleTitle')}</span> {t('landing.noteEligible')}
                   </p>
                 )}
                 {recFilterTab === 'NEEDS_VERIFICATION' && (
                   <div className="flex items-center justify-between w-full">
                     <p className="text-amber-800">
-                      <span className="font-semibold">Unlock Eligibility:</span> High AI affinity for your profile, but requires verifying documents in your Wallet.
+                      <span className="font-semibold">{t('landing.noteNeedsTitle')}</span> {t('landing.noteNeeds')}
                     </p>
                     <button
                       onClick={() => navigate('/wallet')}
                       className="ml-3 text-xs font-bold text-amber-700 hover:text-amber-800 underline shrink-0"
                     >
-                      Go to Wallet →
+                      {t('landing.goToWallet')}
                     </button>
                   </div>
                 )}
                 {recFilterTab === 'NOT_ELIGIBLE' && (
                   <p className="text-slate-500">
-                    <span className="font-semibold text-slate-700">Requirements Unmet:</span> One or more mandatory conditions (e.g. income limit, age, or occupation) do not match.
+                    <span className="font-semibold text-slate-700">{t('landing.noteNotTitle')}</span> {t('landing.noteNot')}
                   </p>
                 )}
               </div>
             )}
 
             {loading ? (
-              <LoadingState message="Analyzing your profile..." />
+              <LoadingState message={t('landing.analyzing')} />
             ) : error ? (
-              <ErrorState message="Couldn't load recommendations right now." onRetry={loadRecommendations} />
+              <ErrorState message={t('landing.loadFailed')} onRetry={loadRecommendations} />
             ) : displayedRecommendations.length === 0 ? (
               <EmptyState
                 message={
                   recFilterTab === 'ELIGIBLE'
-                    ? "No fully verified eligible schemes yet. Check the 'Needs Verification' tab or upload documents in your Wallet."
+                    ? t('landing.emptyEligible')
                     : recFilterTab === 'NEEDS_VERIFICATION'
-                    ? "No schemes currently pending document verification."
+                    ? t('landing.emptyNeeds')
                     : recFilterTab === 'NOT_ELIGIBLE'
-                    ? "None of the schemes are marked as not eligible."
-                    : "Complete your profile to get personalized recommendations."
+                    ? t('landing.emptyNot')
+                    : t('landing.emptyAll')
                 }
                 icon={recFilterTab === 'ELIGIBLE' ? '✓' : recFilterTab === 'NEEDS_VERIFICATION' ? '📂' : '🎯'}
               />
@@ -333,7 +336,7 @@ export default function LandingPage() {
         {/* E. Deadlines Approaching */}
         {searchResults === null && !activeCategory && !loading && !error && deadlineSchemes.length > 0 && (
           <section>
-            <h2 className="font-semibold text-slate-800 mb-3">Deadlines Approaching</h2>
+            <h2 className="font-semibold text-slate-800 mb-3">{t('landing.deadlines')}</h2>
             <div className="card divide-y divide-slate-100">
               {deadlineSchemes.map((s) => (
                 <div
@@ -348,7 +351,7 @@ export default function LandingPage() {
                   <span
                     className={`badge-warning ${s.daysRemaining <= 5 ? '!bg-red-50 !text-red-600' : ''}`}
                   >
-                    {s.daysRemaining === 0 ? 'Deadline today' : `${s.daysRemaining} days remaining`}
+                    {s.daysRemaining === 0 ? t('card.deadlineToday') : t('scheme.daysRemaining', { count: s.daysRemaining })}
                   </span>
                 </div>
               ))}

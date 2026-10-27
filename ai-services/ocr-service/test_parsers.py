@@ -218,5 +218,67 @@ class TestOcrParsers(unittest.TestCase):
         self.assertEqual(detect_document_type("Patta Chitta Survey No Extent Wet Land"), "LAND")
         self.assertEqual(detect_document_type("Savings Bank Passbook IFSC SBIN0000123"), "BANK_PASSBOOK")
 
+class TestExtraFields(unittest.TestCase):
+    def test_income_authority_and_validity(self):
+        res = parse_income_certificate(
+            "INCOME CERTIFICATE\nCertificate No: TN-720240415101\nIssuing Authority: Tahsildar, Coimbatore South\n"
+            "Date of Issue: 20/04/2024\nValid up to: 19/04/2025\nAnnual Income Rs. 75,000/-\n")
+        self.assertIn("Tahsildar", res.get("issuingAuthority", ""))
+        self.assertEqual(res.get("validity"), "19/04/2025")
+        self.assertEqual(res.get("annualIncome"), "75000")
+
+    def test_caste_authority(self):
+        res = parse_caste_certificate("COMMUNITY CERTIFICATE\nCertificate No: TN-123456\nCommunity: Backward Class\nIssued By: Tahsildar\n")
+        self.assertEqual(res.get("issuingAuthority"), "Tahsildar")
+
+    def test_disability_certificate_number_and_authority(self):
+        res = parse_disability_certificate(
+            "Disability Certificate\nCertificate No: DIS/2023/00123\nDisability Type: Locomotor Disability\n"
+            "Disability Percentage: 60%\nIssuing Authority: Medical Board, Chennai\n")
+        self.assertEqual(res.get("certificateNumber"), "DIS/2023/00123")
+        self.assertIn("Medical Board", res.get("issuingAuthority", ""))
+
+    def test_education_roll_and_marks(self):
+        res = parse_education_certificate(
+            "Name of the Student: Priya M\nInstitution: Anna University\nCourse: B.E\nRegister No: 810021104055\n"
+            "Percentage: 78.5%\nYear of Passing: 2023\n")
+        self.assertEqual(res.get("registrationNumber"), "810021104055")
+        self.assertEqual(res.get("percentage"), "78.5")
+        self.assertEqual(res.get("qualification").upper().replace(".", ""), "BE")
+
+    def test_employment_type_and_no_overwrite(self):
+        res = parse_employment_document("Name of Worker: Ravi K\nOccupation: Mason\nEmployment Type: Daily Wage\nLabour Registration No: TNLW12345\n")
+        self.assertEqual(res.get("employmentType"), "Daily Wage")
+
+    def test_missing_extras_are_omitted(self):
+        res = parse_caste_certificate("COMMUNITY CERTIFICATE\nCommunity: SC\n")
+        self.assertNotIn("issuingAuthority", res)
+
+
+class TestLabelledLines(unittest.TestCase):
+    def test_values_do_not_run_into_next_label(self):
+        res = parse_caste_certificate("Community Certificate\nName: Priya Murugan\nCommunity: Backward Class\nCaste: Mudaliyar\n")
+        self.assertEqual(res.get("name"), "Priya Murugan")
+        self.assertEqual(res.get("community"), "Backward Class")
+        self.assertEqual(res.get("caste"), "Mudaliyar")
+
+    def test_education_name_and_institution(self):
+        res = parse_education_certificate("Anna University\nName of the Student: Priya Murugan\nCourse: B.E Computer Science\nRegister No: 810021104055\n")
+        self.assertEqual(res.get("name"), "Priya Murugan")
+        self.assertEqual(res.get("institution"), "Anna University")
+
+    def test_ifsc_ocr_errors_repaired(self):
+        res = parse_bank_passbook("State Bank of India\nAccount Holder Name: Priya M\nAccount No: 31234567890\nIFSC: SBIN0OO0123\n")
+        self.assertEqual(res.get("ifsc"), "SBIN0000123")
+
+    def test_ration_family_size_counts_members(self):
+        res = parse_ration_card("Family Card\nCard Number: 33/12345/678\nHead of Family: Murugan\nMembers: Murugan Father, Lakshmi Mother, Priya Daughter\n")
+        self.assertEqual(res.get("headOfFamily"), "Murugan")
+
+    def test_aadhaar_name_above_dob_and_clean_address(self):
+        res = parse_aadhaar("Government of India\nPriya Murugan\nDOB: 15/08/1998\nFemale\n2345 6789 1234\n")
+        self.assertEqual(res.get("name"), "Priya Murugan")
+
+
 if __name__ == "__main__":
     unittest.main()

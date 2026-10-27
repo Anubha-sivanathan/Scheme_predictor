@@ -31,10 +31,14 @@ public class ProfileService {
         Profile profile = profileRepository.findByUserId(userId)
                 .orElse(Profile.builder().userId(userId).build());
 
+        if (req.getFullName() != null) profile.setFullName(req.getFullName());
+        if (req.getDateOfBirth() != null) profile.setDateOfBirth(req.getDateOfBirth());
         if (req.getAge() != null) profile.setAge(req.getAge());
         if (req.getGender() != null) profile.setGender(req.getGender());
         if (req.getState() != null) profile.setState(req.getState());
         if (req.getDistrict() != null) profile.setDistrict(req.getDistrict());
+        if (req.getPinCode() != null) profile.setPinCode(req.getPinCode());
+        if (req.getAddress() != null) profile.setAddress(req.getAddress());
         if (req.getIncome() != null) profile.setIncome(req.getIncome());
         if (req.getOccupation() != null) profile.setOccupation(req.getOccupation());
         if (req.getEducation() != null) profile.setEducation(req.getEducation());

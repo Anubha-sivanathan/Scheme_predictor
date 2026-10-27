@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import NavBar from '../components/NavBar'
 import Chatbot from '../components/Chatbot'
 import { LoadingState, ErrorState } from '../components/StateViews'
 import { getSchemeById, saveScheme, unsaveScheme } from '../api/schemes'
 import { getRecommendations } from '../api/recommendations'
+import { localizeRecommendation } from '../i18n/server'
 
 export default function SchemeDetailPage() {
+  const { t, i18n } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
 
   const [scheme, setScheme] = useState(null)
-  const [recommendation, setRecommendation] = useState(null) // has match %, eligibility, etc.
+  const [rawRecommendation, setRecommendation] = useState(null) // has match %, eligibility, etc.
+  // Server-generated eligibility text is rebuilt in the active language (English passes through unchanged).
+  const recommendation = localizeRecommendation(rawRecommendation, t, i18n.language)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -52,7 +57,7 @@ export default function SchemeDetailPage() {
     return (
       <div className="min-h-screen bg-slate-50">
         <NavBar />
-        <LoadingState message="Loading scheme details..." />
+        <LoadingState message={t('scheme.loading')} />
       </div>
     )
   }
@@ -61,7 +66,7 @@ export default function SchemeDetailPage() {
     return (
       <div className="min-h-screen bg-slate-50">
         <NavBar />
-        <ErrorState message="Couldn't load this scheme." onRetry={load} />
+        <ErrorState message={t('scheme.loadFailed')} onRetry={load} />
       </div>
     )
   }
@@ -75,7 +80,7 @@ export default function SchemeDetailPage() {
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <button onClick={() => navigate(-1)} className="text-sm text-slate-500 hover:text-slate-700">
-          ← Back
+          {t('common.back')}
         </button>
 
         {/* Header */}
@@ -84,16 +89,16 @@ export default function SchemeDetailPage() {
             <div>
               {recommendation?.rank != null && (
                 <p className="text-xs font-semibold text-primary-600 uppercase tracking-wide mb-1">
-                  Recommended Scheme #{recommendation.rank}
+                  {t('scheme.recommendedRank', { rank: recommendation.rank })}
                 </p>
               )}
               <h1 className="text-xl font-semibold text-slate-800">{scheme.name}</h1>
-              <p className="text-sm text-slate-500 mt-1">{scheme.department} · {scheme.category}</p>
+              <p className="text-sm text-slate-500 mt-1">{scheme.department} · {t(`categories.${scheme.category}`, { defaultValue: scheme.category })}</p>
             </div>
             {recommendation && (
               <div className="text-center shrink-0">
                 <div className="text-2xl font-bold text-primary-600">{recommendation.matchPercentage}%</div>
-                <div className="text-[10px] text-slate-400 uppercase tracking-wide">Match</div>
+                <div className="text-[10px] text-slate-400 uppercase tracking-wide">{t('card.match')}</div>
               </div>
             )}
           </div>
@@ -103,27 +108,27 @@ export default function SchemeDetailPage() {
           <div className="flex flex-wrap items-center gap-3 mt-4">
             {status === 'ELIGIBLE' && (
               <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-200">
-                <span>✓</span> Appears Eligible (All Criteria Satisfied)
+                <span>✓</span> {t('scheme.appearsEligibleAll')}
               </span>
             )}
             {status === 'NEEDS_VERIFICATION' && (
               <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-semibold px-3 py-1 rounded-full border border-amber-200">
-                <span>⚠</span> Needs Verification (Pending Wallet Documents)
+                <span>⚠</span> {t('scheme.needsVerificationLong')}
               </span>
             )}
             {status === 'NOT_ELIGIBLE' && (
               <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 text-xs font-semibold px-3 py-1 rounded-full border border-rose-200">
-                <span>✕</span> Requirements Not Met
+                <span>✕</span> {t('scheme.requirementsNotMet')}
               </span>
             )}
-            {!status && recommendation?.eligible === true && <span className="badge-success">Appears Eligible</span>}
-            {!status && recommendation?.eligible === false && <span className="badge-warning">Requirements Not Yet Met</span>}
+            {!status && recommendation?.eligible === true && <span className="badge-success">{t('card.appearsEligible')}</span>}
+            {!status && recommendation?.eligible === false && <span className="badge-warning">{t('scheme.requirementsNotYet')}</span>}
 
             <button onClick={handleToggleSave} className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-800 ml-auto">
               <span className={`text-lg transition-transform hover:scale-110 ${saved ? 'text-rose-500' : 'text-slate-400'}`}>
                 {saved ? '♥' : '♡'}
               </span>
-              <span>{saved ? 'Saved' : 'Save Scheme'}</span>
+              <span>{saved ? t('scheme.saved') : t('scheme.save')}</span>
             </button>
           </div>
         </div>
@@ -133,14 +138,14 @@ export default function SchemeDetailPage() {
           <div className="card bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50 border-primary-100">
             <div className="flex items-center gap-2 mb-2 text-primary-700 font-semibold text-sm">
               <span className="text-base">✦</span>
-              <h2>Explainable AI Decision Analysis</h2>
+              <h2>{t('scheme.xaiTitle')}</h2>
             </div>
             <p className="text-sm text-slate-700 leading-relaxed">
               {recommendation.explanationText}
             </p>
             {recommendation.eligibilityStatusMessage && (
               <p className="text-xs text-primary-800/80 mt-2 font-medium">
-                Note: {recommendation.eligibilityStatusMessage}
+                {t('scheme.note')} {recommendation.eligibilityStatusMessage}
               </p>
             )}
           </div>
@@ -149,7 +154,7 @@ export default function SchemeDetailPage() {
         {/* Criteria Breakdown from Rule Engine */}
         {recommendation?.criteriaChecks?.length > 0 && (
           <div className="card">
-            <h2 className="font-semibold text-slate-800 mb-3">Eligibility Criteria Breakdown</h2>
+            <h2 className="font-semibold text-slate-800 mb-3">{t('scheme.breakdown')}</h2>
             <ul className="space-y-2.5">
               {recommendation.criteriaChecks.map((c, i) => (
                 <li key={i} className="flex items-start gap-2.5 text-sm p-2.5 rounded-xl bg-slate-50/70 border border-slate-100">
@@ -174,7 +179,7 @@ export default function SchemeDetailPage() {
                           ? 'bg-rose-50 text-rose-700'
                           : 'bg-amber-50 text-amber-700'
                       }`}>
-                        {c.status === 'MET' ? 'Satisfied' : c.status === 'NOT_MET' ? 'Unmet' : 'Requires Verification'}
+                        {c.status === 'MET' ? t('scheme.satisfied') : c.status === 'NOT_MET' ? t('scheme.unmet') : t('scheme.requiresVerification')}
                       </span>
                     </div>
                     {c.detail && (
@@ -188,13 +193,13 @@ export default function SchemeDetailPage() {
             {status === 'NEEDS_VERIFICATION' && (
               <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <p className="text-xs text-amber-800">
-                  <span className="font-semibold">Missing required verification:</span> Upload and confirm documents in your Data Wallet to satisfy unknown criteria.
+                  <span className="font-semibold">{t('scheme.missingVerification')}</span> {t('scheme.missingVerificationBody')}
                 </p>
                 <button
                   onClick={() => navigate('/wallet')}
                   className="btn-primary text-xs !py-1.5 !px-3 shrink-0"
                 >
-                  Upload in Wallet
+                  {t('scheme.uploadInWallet')}
                 </button>
               </div>
             )}
@@ -204,7 +209,7 @@ export default function SchemeDetailPage() {
         {/* Benefits */}
         {scheme.benefits && scheme.benefits.length > 0 && (
           <div className="card">
-            <h2 className="font-semibold text-slate-800 mb-3">Benefits</h2>
+            <h2 className="font-semibold text-slate-800 mb-3">{t('scheme.benefits')}</h2>
             <ul className="space-y-1.5">
               {scheme.benefits.map((b, i) => (
                 <li key={i} className="text-sm text-slate-600 flex gap-2">
@@ -217,34 +222,34 @@ export default function SchemeDetailPage() {
 
         {/* Eligibility Criteria (raw, informational) */}
         <div className="card">
-          <h2 className="font-semibold text-slate-800 mb-3">Eligibility Criteria</h2>
+          <h2 className="font-semibold text-slate-800 mb-3">{t('scheme.criteria')}</h2>
           <div className="grid grid-cols-2 gap-3 text-sm">
             {(criteria.minAge || criteria.maxAge) && (
-              <CriteriaItem label="Age" value={`${criteria.minAge ?? 'Any'}–${criteria.maxAge ?? 'Any'}`} />
+              <CriteriaItem label={t('scheme.age')} value={`${criteria.minAge ?? t('scheme.any')}–${criteria.maxAge ?? t('scheme.any')}`} />
             )}
             {(criteria.minIncome || criteria.maxIncome) && (
               <CriteriaItem
-                label="Income"
+                label={t('scheme.income')}
                 value={
                   criteria.maxIncome
-                    ? `Up to ₹${(criteria.maxIncome / 100000).toFixed(1)}L`
-                    : `Above ₹${(criteria.minIncome / 100000).toFixed(1)}L`
+                    ? t('scheme.incomeUpTo', { value: (criteria.maxIncome / 100000).toFixed(1) })
+                    : t('scheme.incomeAbove', { value: (criteria.minIncome / 100000).toFixed(1) })
                 }
               />
             )}
             {criteria.allowedCategories?.length > 0 && (
-              <CriteriaItem label="Category" value={criteria.allowedCategories.join(', ')} />
+              <CriteriaItem label={t('scheme.category')} value={criteria.allowedCategories.join(', ')} />
             )}
             {criteria.allowedStates?.length > 0 && (
-              <CriteriaItem label="Residence" value={criteria.allowedStates.join(', ')} />
+              <CriteriaItem label={t('scheme.residence')} value={criteria.allowedStates.join(', ')} />
             )}
             {criteria.allowedOccupations?.length > 0 && (
-              <CriteriaItem label="Occupation" value={criteria.allowedOccupations.join(', ')} />
+              <CriteriaItem label={t('scheme.occupation')} value={criteria.allowedOccupations.join(', ')} />
             )}
-            {criteria.requiresDisability && <CriteriaItem label="Disability" value="Required" />}
-            {criteria.requiresStudent && <CriteriaItem label="Student Status" value="Required" />}
-            {criteria.requiresFarmer && <CriteriaItem label="Farmer Status" value="Required" />}
-            {criteria.requiresSeniorCitizen && <CriteriaItem label="Senior Citizen" value="Required" />}
+            {criteria.requiresDisability && <CriteriaItem label={t('scheme.disability')} value={t('scheme.requiredValue')} />}
+            {criteria.requiresStudent && <CriteriaItem label={t('scheme.studentStatus')} value={t('scheme.requiredValue')} />}
+            {criteria.requiresFarmer && <CriteriaItem label={t('scheme.farmerStatus')} value={t('scheme.requiredValue')} />}
+            {criteria.requiresSeniorCitizen && <CriteriaItem label={t('scheme.seniorCitizen')} value={t('scheme.requiredValue')} />}
           </div>
         </div>
 
@@ -252,12 +257,12 @@ export default function SchemeDetailPage() {
         {scheme.requiredDocuments && scheme.requiredDocuments.length > 0 && (
           <div className="card">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-slate-800">Required Documents</h2>
+              <h2 className="font-semibold text-slate-800">{t('scheme.requiredDocuments')}</h2>
               <button
                 onClick={() => navigate('/wallet')}
                 className="text-xs font-semibold text-primary-600 hover:text-primary-700"
               >
-                Go to Wallet →
+                {t('landing.goToWallet')}
               </button>
             </div>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -277,7 +282,7 @@ export default function SchemeDetailPage() {
                     <span>{d}</span>
                     {isMissing && (
                       <span className="text-[10px] font-bold text-amber-700 bg-amber-100/90 px-1.5 py-0.5 rounded">
-                        Verification Needed
+                        {t('scheme.verificationNeeded')}
                       </span>
                     )}
                   </li>
@@ -285,11 +290,11 @@ export default function SchemeDetailPage() {
               })}
             </ul>
             <p className="text-xs text-slate-400 mt-3">
-              Upload and verify these certificates in your{' '}
+              {t('scheme.walletHintPre')}
               <button onClick={() => navigate('/wallet')} className="text-primary-600 hover:underline font-medium">
-                Unified Data Wallet
+                {t('scheme.walletHintLink')}
               </button>
-              {' '}to unlock automatic eligibility verification.
+              {t('scheme.walletHintPost')}
             </p>
           </div>
         )}
@@ -297,7 +302,7 @@ export default function SchemeDetailPage() {
         {/* Application Process */}
         {scheme.applicationProcess && (
           <div className="card">
-            <h2 className="font-semibold text-slate-800 mb-3">Application Process</h2>
+            <h2 className="font-semibold text-slate-800 mb-3">{t('scheme.applicationProcess')}</h2>
             <p className="text-sm text-slate-600 whitespace-pre-line">{scheme.applicationProcess}</p>
           </div>
         )}
@@ -307,13 +312,13 @@ export default function SchemeDetailPage() {
           <div>
             {scheme.deadline && (
               <>
-                <p className="text-sm text-slate-500">Deadline</p>
+                <p className="text-sm text-slate-500">{t('scheme.deadline')}</p>
                 <p className="font-medium text-slate-800">{scheme.deadline}</p>
                 {recommendation?.daysRemaining != null && (
                   <p className="text-xs text-warning-500 mt-0.5">
                     {recommendation.daysRemaining >= 0
-                      ? `${recommendation.daysRemaining} days remaining`
-                      : 'Deadline has passed'}
+                      ? t('scheme.daysRemaining', { count: recommendation.daysRemaining })
+                      : t('scheme.deadlinePassed')}
                   </p>
                 )}
               </>
@@ -326,16 +331,26 @@ export default function SchemeDetailPage() {
               rel="noopener noreferrer"
               className="btn-primary text-center"
             >
-              Apply Officially →
+              {t('scheme.applyOfficially')}
             </a>
           ) : (
-            <p className="text-sm text-slate-400">Official application link not yet available.</p>
+            <p className="text-sm text-slate-400">{t('scheme.noLink')}</p>
           )}
         </div>
 
+        {scheme.dataSource && (
+          <p className="text-xs text-slate-400 text-center -mt-3">
+            {t('scheme.officialSource')}: {scheme.dataSource}
+            {scheme.linkVerifiedOn ? ` · ${t('scheme.linkChecked', { date: scheme.linkVerifiedOn })}` : ''}
+          </p>
+        )}
+
         <p className="text-xs text-slate-400 text-center pb-4">
-          This is an eligibility estimate based on the information you've provided. The final decision belongs to the relevant government authority.
+          {t('scheme.disclaimer')}
         </p>
+        {i18n.language !== 'en' && (
+          <p className="text-xs text-slate-400 text-center pb-4">{t('scheme.officialTextNotice')}</p>
+        )}
       </main>
 
       <Chatbot />

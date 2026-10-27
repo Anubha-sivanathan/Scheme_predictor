@@ -92,6 +92,10 @@ public class SchemeService {
         existing.setEligibilityCriteria(updated.getEligibilityCriteria());
         existing.setRequiredDocuments(updated.getRequiredDocuments());
         existing.setApplicationProcess(updated.getApplicationProcess());
+        if (!java.util.Objects.equals(existing.getApplicationLink(), updated.getApplicationLink())) {
+            // The recorded check applied to the old link, so it must not vouch for the new one.
+            existing.setLinkVerifiedOn(null);
+        }
         existing.setApplicationLink(updated.getApplicationLink());
         existing.setDeadline(updated.getDeadline());
         if (updated.getStatus() != null && !updated.getStatus().isBlank()) {

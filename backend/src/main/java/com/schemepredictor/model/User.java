@@ -35,6 +35,9 @@ public class User {
 
     private String profileImage;
 
+    /** UI language code (en / ta / hi). Null until the user picks one. */
+    private String language;
+
     @CreatedDate
     private Instant createdAt;
 

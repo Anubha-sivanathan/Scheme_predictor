@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from 'react-i18next'
 import { getNotifications } from '../api/notifications'
+import LanguageSwitcher from './LanguageSwitcher'
 
 export default function NavBar() {
+  const { t } = useTranslation()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -39,25 +42,27 @@ export default function NavBar() {
             SP
           </div>
           <span className="font-semibold text-slate-800 hidden sm:block">
-            Scheme Predictor
+            {t('common.appName')}
           </span>
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-4">
+          <LanguageSwitcher id="nav-language-select" />
+
           {user?.role === 'ADMIN' && (
             <Link
               to="/admin/schemes"
               className="text-xs font-bold uppercase tracking-wider bg-primary-50 text-primary-700 hover:bg-primary-100 px-3 py-1.5 rounded-lg border border-primary-200 transition-colors flex items-center gap-1"
             >
               <span>⚙</span>
-              <span className="hidden sm:inline">Admin Portal</span>
+              <span className="hidden sm:inline">{t('nav.adminPortal')}</span>
             </Link>
           )}
 
           <Link
             to="/notifications"
             className="relative w-10 h-10 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors"
-            aria-label="Notifications"
+            aria-label={t('nav.notifications')}
           >
             <BellIcon />
             {unreadCount > 0 && (
@@ -68,6 +73,8 @@ export default function NavBar() {
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((v) => !v)}
+              aria-label={t('nav.accountMenu')}
+              aria-expanded={menuOpen}
               className="w-10 h-10 rounded-full bg-primary-50 text-primary-600 font-semibold flex items-center justify-center hover:bg-primary-100 transition-colors"
             >
               {(user?.name || 'U').charAt(0).toUpperCase()}
@@ -80,25 +87,25 @@ export default function NavBar() {
                   <p className="text-xs text-slate-500 truncate">{user?.email}</p>
                   {user?.role === 'ADMIN' && (
                     <span className="inline-block mt-1 text-[10px] font-bold bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded">
-                      ADMINISTRATOR
+                      {t('nav.administrator')}
                     </span>
                   )}
                 </div>
                 {user?.role === 'ADMIN' && (
                   <MenuLink to="/admin/schemes" onClick={() => setMenuOpen(false)}>
-                    <span className="text-primary-700 font-semibold">⚙ Admin Portal</span>
+                    <span className="text-primary-700 font-semibold">⚙ {t('nav.adminPortal')}</span>
                   </MenuLink>
                 )}
-                <MenuLink to="/profile" onClick={() => setMenuOpen(false)}>Profile</MenuLink>
-                <MenuLink to="/wallet" onClick={() => setMenuOpen(false)}>Wallet</MenuLink>
-                <MenuLink to="/saved-schemes" onClick={() => setMenuOpen(false)}>Saved Schemes</MenuLink>
-                <MenuLink to="/scheme-history" onClick={() => setMenuOpen(false)}>Scheme History</MenuLink>
-                <MenuLink to="/settings" onClick={() => setMenuOpen(false)}>Settings</MenuLink>
+                <MenuLink to="/profile" onClick={() => setMenuOpen(false)}>{t('nav.profile')}</MenuLink>
+                <MenuLink to="/wallet" onClick={() => setMenuOpen(false)}>{t('nav.wallet')}</MenuLink>
+                <MenuLink to="/saved-schemes" onClick={() => setMenuOpen(false)}>{t('nav.savedSchemes')}</MenuLink>
+                <MenuLink to="/scheme-history" onClick={() => setMenuOpen(false)}>{t('nav.schemeHistory')}</MenuLink>
+                <MenuLink to="/settings" onClick={() => setMenuOpen(false)}>{t('nav.settings')}</MenuLink>
                 <button
                   onClick={handleLogout}
                   className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                 >
-                  Sign Out
+                  {t('nav.signOut')}
                 </button>
               </div>
             )}

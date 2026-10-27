@@ -13,6 +13,7 @@ import SavedSchemesPage from './pages/SavedSchemesPage'
 import SchemeHistoryPage from './pages/SchemeHistoryPage'
 import SettingsPage from './pages/SettingsPage'
 import AdminSchemesPage from './pages/AdminSchemesPage'
+import SharedDocumentPage from './pages/SharedDocumentPage'
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth()
@@ -40,6 +41,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/shared/:token" element={<SharedDocumentPage />} />
 
       <Route
         path="/"

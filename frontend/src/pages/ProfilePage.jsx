@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import NavBar from '../components/NavBar'
 import Chatbot from '../components/Chatbot'
 import { LoadingState, ErrorState, EmptyState } from '../components/StateViews'
@@ -11,7 +12,20 @@ import { useAuth } from '../context/AuthContext'
 const CATEGORY_OPTIONS = ['General', 'OBC', 'SC', 'ST', 'EWS']
 const GENDER_OPTIONS = ['Male', 'Female', 'Other']
 
+// The server reports missing fields as English display names; map them to locale keys.
+const MISSING_FIELD_KEYS = {
+  Age: 'age',
+  Gender: 'gender',
+  State: 'state',
+  District: 'district',
+  'Annual income': 'income',
+  Occupation: 'occupation',
+  Education: 'education',
+  Category: 'category',
+}
+
 export default function ProfilePage() {
+  const { t, i18n } = useTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -65,7 +79,7 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-slate-50">
         <NavBar />
-        <LoadingState message="Loading your profile..." />
+        <LoadingState message={t('profile.loading')} />
       </div>
     )
   }
@@ -74,7 +88,7 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-slate-50">
         <NavBar />
-        <ErrorState message="Couldn't load your profile." onRetry={load} />
+        <ErrorState message={t('profile.loadFailed')} onRetry={load} />
       </div>
     )
   }
@@ -98,7 +112,7 @@ export default function ProfilePage() {
           </div>
           {!editing && (
             <button onClick={() => setEditing(true)} className="btn-secondary text-sm shrink-0">
-              Edit Profile
+              {t('profile.edit')}
             </button>
           )}
         </div>
@@ -106,7 +120,7 @@ export default function ProfilePage() {
         {/* D. Profile Completion */}
         <div className="card">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="font-semibold text-slate-800">Profile Completion</h2>
+            <h2 className="font-semibold text-slate-800">{t('profile.completion')}</h2>
             <span className="text-sm font-semibold text-primary-600">{completionPercentage}%</span>
           </div>
           <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
@@ -117,35 +131,54 @@ export default function ProfilePage() {
           </div>
           {missingFields?.length > 0 ? (
             <p className="text-xs text-slate-500">
-              Complete your profile to receive more accurate scheme recommendations. Missing: {missingFields.join(', ')}.
+              {t('profile.completeHint', {
+                fields: missingFields
+                  .map((f) => (MISSING_FIELD_KEYS[f] ? t(`profile.fieldNames.${MISSING_FIELD_KEYS[f]}`) : f))
+                  .join(', '),
+              })}
             </p>
           ) : (
-            <p className="text-xs text-success-500">Your profile is complete.</p>
+            <p className="text-xs text-success-500">{t('profile.complete')}</p>
           )}
         </div>
 
         {/* B & C. Personal Details / Edit */}
         <div className="card">
-          <h2 className="font-semibold text-slate-800 mb-4">Personal Details</h2>
+          <h2 className="font-semibold text-slate-800 mb-4">{t('profile.personal')}</h2>
 
           {!editing ? (
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <DetailItem label="Age" value={profile.age} />
-              <DetailItem label="Gender" value={profile.gender} />
-              <DetailItem label="State" value={profile.state} />
-              <DetailItem label="District" value={profile.district} />
-              <DetailItem label="Education" value={profile.education} />
-              <DetailItem label="Occupation" value={profile.occupation} />
-              <DetailItem label="Annual Income" value={profile.income ? `₹${profile.income.toLocaleString()}` : null} />
-              <DetailItem label="Category" value={profile.category} />
-              <DetailItem label="Family Size" value={profile.familySize} />
-              <DetailItem label="Land Holding" value={profile.landHoldingAcres != null ? `${profile.landHoldingAcres} acres` : null} />
-              <DetailItem label="Disability" value={profile.disability != null ? (profile.disability ? 'Yes' : 'No') : null} />
-              <DetailItem label="Student" value={profile.isStudent != null ? (profile.isStudent ? 'Yes' : 'No') : null} />
+              <DetailItem label={t('profile.fullName')} value={profile.fullName} />
+              <DetailItem label={t('profile.dateOfBirth')} value={profile.dateOfBirth} />
+              <DetailItem label={t('profile.age')} value={profile.age} />
+              <DetailItem label={t('profile.gender')} value={profile.gender ? t(`profile.genders.${profile.gender}`, { defaultValue: profile.gender }) : null} />
+              <DetailItem label={t('profile.state')} value={profile.state} />
+              <DetailItem label={t('profile.district')} value={profile.district} />
+              <DetailItem label={t('profile.pinCode')} value={profile.pinCode} />
+              <DetailItem label={t('profile.address')} value={profile.address} />
+              <DetailItem label={t('profile.education')} value={profile.education} />
+              <DetailItem label={t('profile.occupation')} value={profile.occupation} />
+              <DetailItem label={t('profile.income')} value={profile.income ? `₹${profile.income.toLocaleString(i18n.language)}` : null} />
+              <DetailItem label={t('profile.category')} value={profile.category} />
+              <DetailItem label={t('profile.familySize')} value={profile.familySize} />
+              <DetailItem label={t('profile.landHolding')} value={profile.landHoldingAcres != null ? t('profile.acres', { value: profile.landHoldingAcres }) : null} />
+              <DetailItem label={t('profile.disability')} value={profile.disability != null ? (profile.disability ? t('common.yes') : t('common.no')) : null} />
+              <DetailItem label={t('profile.student')} value={profile.isStudent != null ? (profile.isStudent ? t('common.yes') : t('common.no')) : null} />
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Age">
+              <Field label={t('profile.fullName')}>
+                <input className="input-field" value={form.fullName ?? ''} onChange={(e) => handleChange('fullName', e.target.value)} />
+              </Field>
+              <Field label={t('profile.dateOfBirth')}>
+                <input
+                  className="input-field"
+                  placeholder="DD/MM/YYYY"
+                  value={form.dateOfBirth ?? ''}
+                  onChange={(e) => handleChange('dateOfBirth', e.target.value)}
+                />
+              </Field>
+              <Field label={t('profile.age')}>
                 <input
                   type="number"
                   className="input-field"
@@ -153,25 +186,37 @@ export default function ProfilePage() {
                   onChange={(e) => handleChange('age', e.target.value ? Number(e.target.value) : null)}
                 />
               </Field>
-              <Field label="Gender">
+              <Field label={t('profile.gender')}>
                 <select className="input-field" value={form.gender ?? ''} onChange={(e) => handleChange('gender', e.target.value)}>
-                  <option value="">Select</option>
-                  {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
+                  <option value="">{t('common.select')}</option>
+                  {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{t(`profile.genders.${g}`)}</option>)}
                 </select>
               </Field>
-              <Field label="State">
+              <Field label={t('profile.state')}>
                 <input className="input-field" value={form.state ?? ''} onChange={(e) => handleChange('state', e.target.value)} />
               </Field>
-              <Field label="District">
+              <Field label={t('profile.district')}>
                 <input className="input-field" value={form.district ?? ''} onChange={(e) => handleChange('district', e.target.value)} />
               </Field>
-              <Field label="Education">
-                <input className="input-field" value={form.education ?? ''} onChange={(e) => handleChange('education', e.target.value)} placeholder="e.g. Graduate" />
+              <Field label={t('profile.pinCode')}>
+                <input
+                  className="input-field"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={form.pinCode ?? ''}
+                  onChange={(e) => handleChange('pinCode', e.target.value.replace(/\D/g, ''))}
+                />
               </Field>
-              <Field label="Occupation">
+              <Field label={t('profile.address')}>
+                <input className="input-field" value={form.address ?? ''} onChange={(e) => handleChange('address', e.target.value)} />
+              </Field>
+              <Field label={t('profile.education')}>
+                <input className="input-field" value={form.education ?? ''} onChange={(e) => handleChange('education', e.target.value)} placeholder={t('profile.educationPlaceholder')} />
+              </Field>
+              <Field label={t('profile.occupation')}>
                 <input className="input-field" value={form.occupation ?? ''} onChange={(e) => handleChange('occupation', e.target.value)} />
               </Field>
-              <Field label="Annual Income (₹)">
+              <Field label={t('profile.incomeInput')}>
                 <input
                   type="number"
                   className="input-field"
@@ -179,13 +224,13 @@ export default function ProfilePage() {
                   onChange={(e) => handleChange('income', e.target.value ? Number(e.target.value) : null)}
                 />
               </Field>
-              <Field label="Category">
+              <Field label={t('profile.category')}>
                 <select className="input-field" value={form.category ?? ''} onChange={(e) => handleChange('category', e.target.value)}>
-                  <option value="">Select</option>
+                  <option value="">{t('common.select')}</option>
                   {CATEGORY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </Field>
-              <Field label="Family Size">
+              <Field label={t('profile.familySize')}>
                 <input
                   type="number"
                   className="input-field"
@@ -193,7 +238,7 @@ export default function ProfilePage() {
                   onChange={(e) => handleChange('familySize', e.target.value ? Number(e.target.value) : null)}
                 />
               </Field>
-              <Field label="Land Holding (acres)">
+              <Field label={t('profile.landHoldingInput')}>
                 <input
                   type="number"
                   step="0.1"
@@ -202,35 +247,35 @@ export default function ProfilePage() {
                   onChange={(e) => handleChange('landHoldingAcres', e.target.value ? Number(e.target.value) : null)}
                 />
               </Field>
-              <Field label="Disability">
+              <Field label={t('profile.disability')}>
                 <select
                   className="input-field"
                   value={form.disability == null ? '' : String(form.disability)}
                   onChange={(e) => handleChange('disability', e.target.value === '' ? null : e.target.value === 'true')}
                 >
-                  <option value="">Select</option>
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
+                  <option value="">{t('common.select')}</option>
+                  <option value="true">{t('common.yes')}</option>
+                  <option value="false">{t('common.no')}</option>
                 </select>
               </Field>
-              <Field label="Student">
+              <Field label={t('profile.student')}>
                 <select
                   className="input-field"
                   value={form.isStudent == null ? '' : String(form.isStudent)}
                   onChange={(e) => handleChange('isStudent', e.target.value === '' ? null : e.target.value === 'true')}
                 >
-                  <option value="">Select</option>
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
+                  <option value="">{t('common.select')}</option>
+                  <option value="true">{t('common.yes')}</option>
+                  <option value="false">{t('common.no')}</option>
                 </select>
               </Field>
 
               <div className="sm:col-span-2 flex gap-3 pt-2">
                 <button onClick={handleSave} disabled={saving} className="btn-primary">
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  {saving ? t('profile.saving') : t('profile.saveChanges')}
                 </button>
                 <button onClick={() => { setEditing(false); setForm(profile) }} className="btn-secondary">
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>
@@ -240,13 +285,13 @@ export default function ProfilePage() {
         {/* E. Scheme History */}
         <div className="card">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-slate-800">Recently Viewed</h2>
+            <h2 className="font-semibold text-slate-800">{t('profile.recentlyViewed')}</h2>
             <button onClick={() => navigate('/scheme-history')} className="text-sm text-primary-600 hover:text-primary-700">
-              View All
+              {t('common.viewAll')}
             </button>
           </div>
           {history.length === 0 ? (
-            <EmptyState message="No schemes viewed yet." icon="🕒" />
+            <EmptyState message={t('profile.noHistory')} icon="🕒" />
           ) : (
             <ul className="divide-y divide-slate-100">
               {history.slice(0, 5).map((s) => (
@@ -265,13 +310,13 @@ export default function ProfilePage() {
         {/* F. Saved Schemes */}
         <div className="card">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-slate-800">Saved Schemes</h2>
+            <h2 className="font-semibold text-slate-800">{t('nav.savedSchemes')}</h2>
             <button onClick={() => navigate('/saved-schemes')} className="text-sm text-primary-600 hover:text-primary-700">
-              View All
+              {t('common.viewAll')}
             </button>
           </div>
           {saved.length === 0 ? (
-            <EmptyState message="No saved schemes yet." icon="♡" />
+            <EmptyState message={t('profile.noSaved')} icon="♡" />
           ) : (
             <ul className="divide-y divide-slate-100">
               {saved.slice(0, 5).map((s) => (

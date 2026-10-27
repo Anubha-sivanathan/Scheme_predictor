@@ -77,7 +77,8 @@ scheme-predictor/
 ### Step 1 — MongoDB
 Start MongoDB, then seed sample scheme data:
 ```bash
-mongosh scheme_predictor backend/seed/seed_schemes.js
+mongosh scheme_predictor backend/seed/seed_schemes.js         # 10 base schemes (clears the collection first)
+mongosh scheme_predictor backend/seed/seed_schemes_extra.js   # +50 schemes with official links (upserts; safe to re-run)
 ```
 
 ### Step 2 — Backend (Spring Boot)
@@ -143,3 +144,48 @@ If the AI services aren't running, the app **still works**: the backend transpar
 - Passwords are BCrypt-hashed; JWTs are HMAC-SHA256 signed (`app.jwt.secret` — **change this in production**).
 - All `/api/**` routes except `/api/auth/**` and `GET /api/schemes/**` require a valid JWT.
 - Every wallet/profile/notification endpoint scopes queries to the authenticated user's own ID — a citizen can't read another citizen's documents by guessing an ID.
+
+---
+
+## 7. Week 1 enhancements: languages, secure document sharing, versions
+
+### 7.1 Languages (English, தமிழ், हिन्दी)
+- UI text lives in `frontend/src/locales/{en,ta,hi}.json`, loaded with `i18next`. English is bundled; Tamil and Hindi are separate lazy-loaded chunks (~7.5 kB gzipped each).
+- The choice is saved in `localStorage` (`lang`) and, when signed in, on the account (`PUT /api/users/me/language`, returned as `language` at login). On sign-in the account's language wins; if the account has none, the device's choice is saved to it.
+- `<html lang>` and `dir` update on every switch. All three languages are left-to-right; `directionFor()` in `src/i18n/index.js` is where an RTL language would be added.
+- **Not translated, on purpose:** scheme names, descriptions, benefits, eligibility text and application steps stay in their original official wording (a notice says so when a non-English language is active). Add reviewed translations before changing this.
+- **Server-generated text** (eligibility status messages, criteria labels and details, "missing information", the AI explanation, deadline notifications) is rendered in the active language by the frontend from stable codes the backend now sends (`code`/`params` on each criterion, `missingInformationCodes`, `params` on notifications). The backend's English text is still sent unchanged and is used for English and as the fallback for any unknown code. Notifications created before this change have no `params` and stay in English.
+- **Admin Portal** is translated (the scheme data it edits is not).
+- **Translation quality:** the Tamil and Hindi strings were drafted by an AI model and have **not** had a native-speaker review. Have them reviewed, especially legal/government terms, before public launch.
+- **OCR** reads English-script text only. Tamil and Hindi documents are not supported by OCR; the wallet tells users to enter those details themselves during review.
+- A test fails if `ta`/`hi` have a missing or extra key, or lose an interpolation placeholder, relative to `en`.
+
+### 7.2 Document sharing (per document)
+Endpoints (owner, JWT required): `POST/GET /api/wallet/{id}/shares`, `DELETE /api/wallet/{id}/shares/{shareId}` (revoke), `GET /api/wallet/{id}/shares/{shareId}/events`.
+Public (token only): `GET /api/share/{token}` (metadata), `/view` (inline), `/download` (attachment, `DOWNLOAD` links only). The web page for a link is `/shared/:token`.
+
+- Tokens are 256-bit `SecureRandom` values; only the SHA-256 hash is stored. The raw token is returned once, at creation.
+- Permissions: `VIEW` (inline only) or `DOWNLOAD`. Expiry 1 hour to 7 days (default 24 h). Links can be revoked at any time. A view-only link cannot be saved through the app, but a viewer can still screenshot it; the UI says so.
+- Ownership is enforced on every owner endpoint (other users get 404). Expired and revoked links return 410; unknown tokens 404.
+- **Aadhaar documents cannot be shared** unless `app.share.allow-sensitive=true` (env `SHARE_ALLOW_SENSITIVE`), and even then need an explicit risk acknowledgement. Other sensitive types (income, caste, residence, disability, land, ration card, bank passbook, employment) require `acknowledgeRisk: true`. The UI shows the risks before any link is created.
+- The public endpoints are rate limited per client address (`app.share.rate-limit-per-minute`, default 30/min; HTTP 429 with `Retry-After`). The counter is in memory, so each backend instance enforces its own limit; behind a reverse proxy set `server.forward-headers-strategy=framework` so the real client address is used.
+- Every access attempt is recorded (`share_access_events`): outcome and time only, no document content, token or IP address.
+- Shared responses are `Cache-Control: no-store` with `X-Content-Type-Options: nosniff`. Deleting a document deletes its links and files.
+
+### 7.3 Uploads and version history
+- Uploads accept PDF/JPG/PNG only, validated by extension **and** file signature; the document type must be one of the known types; names are sanitised and files are stored under a generated name inside the upload directory.
+- `GET/POST /api/wallet/{id}/versions`, `POST /api/wallet/{id}/versions/{n}/restore`. A new version resets OCR/verification (the file changed). Restoring copies the old file forward as a new latest version, so history is never rewritten. The last 10 versions are kept. Documents created before this change appear as version 1. Shares always serve the current version.
+
+### 7.4 Schemes
+`backend/seed/seed_schemes_extra.js` adds 50 schemes (60 in total) across all nine categories. Each has its own official portal as `applicationLink`, plus `dataSource` and `linkVerifiedOn`, shown on the scheme page. **All 50 links returned HTTP 200 on 2026-10-27; that proves the site is reachable, not that the page still matches the summary.** Eligibility criteria include only well-known, stable rules; deadlines are left empty rather than invented. An administrator should review each entry against its official page before go-live.
+
+### 7.5 Tests
+```bash
+cd backend  && mvn test      # 48 tests: sharing, rate limiting, uploads, versions, language preference, rule engine + codes
+cd frontend && npm test      # 43 tests: language switching/persistence, locale parity, server-text localisation, admin page, share dialog, versions, chatbot
+cd frontend && npm run build
+```
+Not covered by automated tests: running the whole stack against a real MongoDB, the OCR service, and a real browser. Test the share flow manually once end to end before release.
+
+### 7.6 Known limitations / next steps (not started)
+Offline/PWA support, file-storage abstraction (S3/GridFS), encryption at rest, named-user sharing, ESLint, and a browser-level smoke test. If an administrator changes a scheme's `applicationLink`, its `linkVerifiedOn` is cleared, since the earlier check no longer applies.
